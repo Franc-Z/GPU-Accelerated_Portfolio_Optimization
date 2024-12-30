@@ -10,7 +10,7 @@ import time
 import cudf as pd
 
 # Julia代码路径，最好能给容器里的绝对路径
-JULIA_CODE_PATH = "/nvtest/Mean-Risk/mean_std_gpu.jl"
+JULIA_CODE_PATH = "/path_to/mean_std_gpu.jl"
 # 检查Julia代码路径是否存在
 if not exists(JULIA_CODE_PATH):
     raise FileNotFoundError(f"Julia代码路径 {JULIA_CODE_PATH} 不存在")

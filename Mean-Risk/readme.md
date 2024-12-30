@@ -147,27 +147,15 @@ H_{tw} & H_{tt}
 **Julia代码示例：**
 
 ```julia
-function hess_dense!(H::AbstractMatrix, nlp::PortfolioNLPModelCUDA, x::AbstractVector, λ::AbstractVector, ν::AbstractVector)
-    n = length(x) - 1       # 变量 w 的维度
-    w = x[1:n]
-    t = x[n+1]
-    Σ = nlp.Σ               # 协方差矩阵
-    ν_constr = ν[1]         # 假设锥约束是第一个约束
-
-    # 计算 H_{ww} = 2νΣ
-    H_ww = 2 * ν_constr * Σ
-
-    # 计算 H_{tt} = -2ν
-    H_tt = -2 * ν_constr
-
-    # 初始化 H 矩阵为零
-    H .= 0.0
-    # 填充 H_{ww}
-    H[1:n, 1:n] .= H_ww
-    # 填充 H_{tt}
-    H[n+1, n+1] = H_tt
-    # 交叉项为零，无需处理
-
+function MadNLP.hess_dense!(nlp::PortfolioNLPModelCUDA, x::AbstractVector{T}, y::AbstractVector{T}, H::AbstractMatrix{T}; obj_weight=1.0) where T
+    nlp.counters.neval_hess += 1
+    n = nlp.meta.nvar - 1
+    #println("拉格朗日H的维度：", size(H))
+    # 初始化 Hessian 矩阵为零
+    CUDA.fill!(H, zero(T))
+    # 只需要考虑锥约束的Hessian矩阵。因为目标函数是线性的，其二阶导数为全零。资金总额约束也是线性的，其二阶导数也是全零。
+    H[1:n, 1:n] .= T(2*y[1]) .* nlp.Σ 
+    H[end,end] = -2*y[1]
     return H
 end
 ```

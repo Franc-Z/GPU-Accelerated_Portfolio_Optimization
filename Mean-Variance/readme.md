@@ -49,40 +49,6 @@ $$
 - $\text{expo}$: 暴露因子矩阵
 - $\text{cov}$: 协方差矩阵
 
-## 标准二次规划形式
-
-将问题转换为标准二次规划形式：
-
-$$
-\text{minimize} \quad 0.5 \cdot x^T Q x + p^T x
-$$
-
-$$
-\text{subject to} \quad A_{\text{eq}} x = b_{\text{eq}}
-$$
-
-$$
-A_{\text{ineq}} x \leq b_{\text{ineq}}
-$$
-
-$$
-lb \leq x \leq ub
-$$
-
-### 矩阵和向量定义
-
-- $x = [h; h_{\text{buy}}; h_{\text{sell}}]$
-- $Q = \begin{bmatrix} 2 \cdot \text{expo} \cdot \text{cov} \cdot \text{expo}^T & 0 & 0 \\ 0 & 0 & 0 \\ 0 & 0 & 0 \end{bmatrix}$
-- $p = [-\alpha; \text{cost}; \text{cost}]$
-- $A_{\text{eq}} = [I, -I, I]$
-- $b_{\text{eq}} = h_0$
-- $A_{\text{ineq}} = [e, 0, 0]$
-- $b_{\text{ineq}} = 1$
-- $lb = [0; 0; 0]$
-- $ub = [0.02; \infty; \infty]$
-
-其中，$e$ 是全1向量，$I$ 是单位矩阵。
-
 ## 求解
 
-求解上述标准二次规划问题，即可得到最优解 $h, h_{\text{buy}}, h_{\text{sell}}$。
+求解上述二次规划问题，即可得到最优解 $h, h_{\text{buy}}, h_{\text{sell}}$。

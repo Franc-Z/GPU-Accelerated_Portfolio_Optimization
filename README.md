@@ -1,7 +1,7 @@
 # GPU-Accelerated_Portfolio_Optimization
-GPU-Accelerated Portfolio Optimization
----
 如何在容器中安装Julia并设置运行环境
+---
+
 1.	进入容器中
 	注意在容器中要有root权限，可以使用在使用docker run时加上--user=root选项。
 	
@@ -43,3 +43,9 @@ GPU-Accelerated Portfolio Optimization
 	找到刚刚安装好julia环境的container名称（假设为container_name），然后执行如下保存container的命令：
 		docker commit container_name docker_image_name:release_version
 	这样，我们就将刚刚设置好环境的container保存为名为docker_image_name:release_version的docker image了。
+
+
+如何在容器中安装必要的python包
+---
+1.	安装juliacall
+2.		pip install juliacall

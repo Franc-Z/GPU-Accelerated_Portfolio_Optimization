@@ -10,7 +10,7 @@
 docker run -it --rm --gpus 1 --user=root -it your_image_name /bin/bash
 ```
 
-#### 2. 安装Julia
+#### 2. 安装Julia （建议使用Julia-1.11.x版本）
 
 下载并安装Julia：
 

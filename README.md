@@ -1,51 +1,116 @@
-# GPU-Accelerated_Portfolio_Optimization
-如何在容器中安装Julia并设置运行环境
----
+### 如何在Linux容器中安装Julia并设置运行环境
 
-1.	进入容器中
-	注意在容器中要有root权限，可以使用在使用docker run时加上--user=root选项。
-	
-2.	安装Julia
-		wget https://mirrors.tuna.tsinghua.edu.cn/julia-releases/bin/linux/x64/1.11/julia-1.11-latest-linux-x86_64.tar.gz
-		tar -zxvf julia-1.11-latest-linux-x86_64.tar.gz
-	如果所安装的Julia版本为julia-1.11.2，则将上面解压的文件夹移动到/usr/local/目录中。
-		mv julia-1.11.2 /usr/local/
+以下是在Linux容器中安装Julia并设置运行环境的步骤指南：
 
-3.	设置环境变量
-		vim ~/.bashrc
-	在文件末尾添加以下行（请根据实际路径调整）
-		export PATH="$PATH:/usr/local/julia-1.11.2/bin"
-	注意，如果环境内没安装vim或namo之类的编辑器，可以直接执行下列命令
-		echo "export PATH="$PATH:/usr/local/julia-1.11.2/bin"" >> ~/.bashrc
-	使配置生效：
-		source ~/.bashrc
-	
-4.	验证安装是否成功
-	在bash中，输入
-		julia
-	看是否能进入环境。如果顺利进入Julia的命令行环境后，可以输入：
-		versioninfo()
-	从而查看系统信息。
+#### 1. 进入容器
 
-5.	安装所需的julia组件库
-	进入Julia环境后，按]键，进入如下组件安装模式
-		(@v1.11) pkg>
-	在如上的组件安装模式中，输入如下命令
-		add NLPModels MadNLP MadNLPGPU LinearAlgebra PythonCall CUDA
+确保在容器中具有root权限，可以在使用`docker run`时加上`--user=root`选项。
 
-6.	安装完毕后，按backspace键，变回正常Julia的命令行模式，然后输入
-		exit()
-	退出到bash命令后，在python中安装必要的安装包：
-		pip install juliacall
+```bash
+docker run --user=root -it your_image_name
+```
 
-7.	保存container为镜像文件，在裸机的bash环境下输入
-		docker ps
-	找到刚刚安装好julia环境的container名称（假设为container_name），然后执行如下保存container的命令：
-		docker commit container_name docker_image_name:release_version
-	这样，我们就将刚刚设置好环境的container保存为名为docker_image_name:release_version的docker image了。
+#### 2. 安装Julia
 
+下载并安装Julia：
 
-如何在容器中安装必要的python包
----
-1.	安装juliacall
-2.		pip install juliacall
+```bash
+wget https://mirrors.tuna.tsinghua.edu.cn/julia-releases/bin/linux/x64/1.11/julia-1.11-latest-linux-x86_64.tar.gz
+tar -zxvf julia-1.11-latest-linux-x86_64.tar.gz
+```
+
+将解压后的文件夹移动到`/usr/local/`目录中（假设版本为`julia-1.11.2`）：
+
+```bash
+mv julia-1.11.2 /usr/local/
+```
+
+#### 3. 设置环境变量
+
+编辑`~/.bashrc`文件：
+
+```bash
+vim ~/.bashrc
+```
+
+在文件末尾添加以下行（请根据实际路径调整）：
+
+```bash
+export PATH="$PATH:/usr/local/julia-1.11.2/bin"
+```
+
+或者直接执行以下命令：
+
+```bash
+echo "export PATH=\"$PATH:/usr/local/julia-1.11.2/bin\"" >> ~/.bashrc
+```
+
+使配置生效：
+
+```bash
+source ~/.bashrc
+```
+
+#### 4. 验证安装
+
+在bash中输入以下命令，验证Julia是否安装成功：
+
+```bash
+julia
+```
+
+进入Julia命令行环境后，输入以下命令查看系统信息：
+
+```julia
+versioninfo()
+```
+
+#### 5. 安装Julia组件库
+
+进入Julia环境后，按`]`键进入包管理模式：
+
+```
+(@v1.11) pkg>
+```
+
+安装所需的组件库：
+
+```julia
+add NLPModels MadNLP MadNLPGPU LinearAlgebra PythonCall CUDA
+```
+
+返回正常Julia命令行模式：
+
+```julia
+按backspace键即可
+```
+
+退出Julia环境：
+
+```julia
+exit()
+```
+
+#### 6. 安装Python依赖
+
+在bash中安装`juliacall`包：
+
+```bash
+pip install juliacall
+```
+
+#### 7. 保存容器为镜像
+
+在裸机的bash环境下，保存容器为镜像文件：
+
+```bash
+docker ps
+```
+
+找到正在运行的容器名称（假设为`container_name`），然后执行以下命令保存为镜像：
+
+```bash
+docker commit container_name docker_image_name:release_version
+```
+
+这样，你就将设置好环境的容器保存为名为`docker_image_name:release_version`的Docker镜像。

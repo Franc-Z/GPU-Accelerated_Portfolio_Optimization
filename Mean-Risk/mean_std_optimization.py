@@ -108,6 +108,9 @@ if __name__ == "__main__":
     df = df.sort_index()
     df.index = pd.to_datetime(df.index) # 将索引列转换为时间戳，而非字符串
 
+    # 如果从csv文件中读取数据，可以使用以下代码
+    # df = pd.read_csv('/nvtest/2022_minute_level/merged.csv', index_col='DATE_TIME', parse_dates=True, dtype=MyFloat)
+    
     # 选择在特定日期范围内的行
     #start_date = pd.to_datetime('2022-01-06')
     #end_date = pd.to_datetime('2022-02-06')

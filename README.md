@@ -32,7 +32,7 @@
 
 ## 关于代码Markdown文件中LaTeX公式无法显示问题
 请将代码下载到本地，并使用VSCode打开。
-请在VSCode中安装LaTeX支持的插件以正常显示。
+请在VSCode中安装支持LaTeX的插件（如Markdown Preview Enhanced）以正常显示。
 
 ## 关于优化过程计时的问题
 由于Julia是先编译再执行的语言，所以某个过程在首次运行时的时长较长，但重复执行的运行时间则会大幅下降。所以计时不要考虑warmup的执行时间。

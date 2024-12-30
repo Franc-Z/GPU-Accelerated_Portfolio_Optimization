@@ -115,7 +115,7 @@ if __name__ == "__main__":
     #start_date = pd.to_datetime('2022-01-06')
     #end_date = pd.to_datetime('2022-02-06')
     #df = df[start_date:end_date]
-    df = df.dropna(axis=1)              # 删除包含缺失值的行
+    df = df.dropna(axis=1)              # 删除包含缺失值的列
     # 如果需要只选择前2000列，可以使用iloc方法
     #df = df.iloc[:, :2000]
 

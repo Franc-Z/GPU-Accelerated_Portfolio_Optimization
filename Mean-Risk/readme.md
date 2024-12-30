@@ -204,27 +204,21 @@ end
 **Julia代码示例：**
 
 ```julia
-function jac_dense!(J::AbstractMatrix, nlp::PortfolioNLPModelCUDA, x::AbstractVector)
-    n = nlp.n_assets          # 资产数量
-    w = x[1:n]
-    t = x[n+1]
-    Σ = nlp.Σ                 # 协方差矩阵
-    e = ones(n)               # 元素全为1的向量
+function MadNLP.jac_dense!(nlp::PortfolioNLPModelCUDA, x::AbstractVector{T}, J::AbstractMatrix{T}) where T
+    nlp.counters.neval_jac += 1
+    nvar = nlp.meta.nvar
+    n = nvar - 1
+    x_var = x[1:n]
+    t = x[end]
 
-    # 初始化 Jacobian 矩阵为零
-    J .= 0.0
+    # 第一行对应二阶锥约束，对 x[i] 的偏导数为2*Σ*x[i]，对 t 的偏导数为-2*t
+    CUDA.CUBLAS.mul!(nlp.V_buffer, nlp.Σ, x_var)
+    J[1, 1:n] = T(2).*nlp.V_buffer'    
+    J[1, end] = T(-2)*t
 
-    # 第一个约束：锥约束
-    # 对 w 的导数：2Σw
-    J[1, 1:n] .= (2 * Σ * w)'  # 注意转置
-    # 对 t 的导数：-2t
-    J[1, n+1] = -2 * t
-
-    # 第二个约束：资金总和约束
-    # 对 w 的导数：e'
-    J[2, 1:n] .= e'
-    # 对 t 的导数：0（已经为零，无需处理）
-
+    # 第二行对应资金总和约束，对 x[i] 的偏导数为1
+    J[2, 1:n] .= one(T)
+    J[2, end] = zero(T)
     return J
 end
 ```

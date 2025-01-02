@@ -30,6 +30,9 @@
 
 注：代码对此股价数据的索引标题和数据列的标题无任何要求；对股价数据的列数也没有任何要求。
 
+大家可以下载网盘分享的文件：merged.parquet （2022年全年的分钟线股价数据）
+链接: https://pan.baidu.com/s/1UFe8PEkOFGJcKjGxlrtNhA?pwd=q3b3 提取码: q3b3
+
 ## 关于代码Markdown文件中LaTeX公式无法显示问题
 请将代码下载到本地，并使用VSCode打开。
 请在VSCode中安装支持LaTeX的插件（如Markdown Preview Enhanced）以正常显示。

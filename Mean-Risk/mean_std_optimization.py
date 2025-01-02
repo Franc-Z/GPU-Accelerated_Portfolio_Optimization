@@ -180,9 +180,9 @@ if __name__ == "__main__":
     julia_results = jl.MadNLPGPU.solve_b(julia_solver)          # 求解最佳权重向量,实际上就是Julia中的MadNLPGPU.solve!()函数，带叹号的函数在python中用_b表示
     
     print("不计Warm-up求解时间，从第二次开始正式计时")
-    start_time = time()
+    start_time = time.time()
     julia_results = jl.MadNLPGPU.solve_b(julia_solver)
-    print(f"求解用时 = {time()-start_time}")
+    print(f"求解用时 = {time.time()-start_time}")
     
     # 打印结果
     print("求解状态: ", julia_results.status)                     # 求解状态

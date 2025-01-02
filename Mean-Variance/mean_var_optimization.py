@@ -4,7 +4,7 @@ from numpy import float32, float64
 from juliacall import Main as jl
 from juliacall import VectorValue as jl_VectorValue     # Julia的广义向量类型，既可以是CuVector也可以是Vector
 from os.path import exists
-
+from time import time
 # 如果初始数据是DataFrame，可以导入cuDF (使用方法类似pandas)
 import cudf as pd
 
@@ -166,6 +166,10 @@ if __name__ == "__main__":
     # 首次调用MadNLP求解，注意Julia首次执行会包括编译时间，所以首次求解会相对慢一些。后续求解会快很多
     print("开始第一次调用MadNLP求解")
     julia_results = jl.MadNLPGPU.solve_b(julia_solver)          # 求解最佳权重向量,实际上就是Julia中的MadNLPGPU.solve!()函数，带叹号的函数在python中用_b表示
+    print("不计Warm-up求解时间，从第二次开始正式计时")
+    start_time = time()
+    julia_results = jl.MadNLPGPU.solve_b(julia_solver)
+    print(f"求解用时 = {time()-start_time}")
     # 打印结果
     print("求解状态: ", julia_results.status)                   # 求解状态
     print("目标函数值: ", -(julia_results.objective))           # 目标函数最优化取值

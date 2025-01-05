@@ -36,7 +36,7 @@ mutable struct PortfolioNLPModelCUDA{
     Σ::MT                           # 协方差矩阵Σ
     #L::MT                          # L矩阵每次求解需要更新
     U::MT                           # 对协方差矩阵进行LU分解的U矩阵，U矩阵每次求解需要更新
-    r_f::T                          # 无风险利率r_f
+    r_f::T                          # 对数(log)无风险利率r_f
     λ_risk::T                       # 风险厌恶系数delta
 end
 

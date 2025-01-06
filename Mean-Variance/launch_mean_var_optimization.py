@@ -111,8 +111,8 @@ if __name__ == "__main__":
     Lambda_risk = MyFloat(1.0)  # 风险厌恶系数，由于此参数需要导入到Julia中，所以需要与Julia中的数据类型一致，这里我们使用MyFloat。注意，这里不能使用T类型，因为T类型是GPU上的CuPy数组的数据类型
     W_min = 0.0                 # 权重下限
     W_max = 1.0                 # 权重上限
-    W_lb = cp.full(N_Assets, W_min, dtype=T)        # 权重下限向量
-    W_ub = cp.full(N_Assets, W_max, dtype=T)        # 权重上限向量
+    W_lb = cp.full(N_Assets, W_min, dtype=T)        # 权重下限向量（添加对自变量的约束，可以改这里的数组元素）
+    W_ub = cp.full(N_Assets, W_max, dtype=T)        # 权重上限向量（添加对自变量的约束，可以改这里的数组元素）
     X0 = cp.full(N_Assets, 1.0/N_Assets, dtype=T)   # 权重计算的初始值向量，这里我们假设所有股票的权重都是相等的，即1/N_Assets。注意这里的X0不参与交易成本的计算，只是用于优化的初始值
     N_con:int = 1                                   # 约束条件的个数（必须是int64类型），这里我们只考虑权重之和为1的约束
     Y0 = cp.full(N_con, 1.0, dtype=T)               # 拉格朗日乘子向量，即拉格朗日方程中约束部分的初始系数（里面的元素默认为1）

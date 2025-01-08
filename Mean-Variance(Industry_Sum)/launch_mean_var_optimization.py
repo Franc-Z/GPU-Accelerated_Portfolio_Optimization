@@ -130,7 +130,7 @@ if __name__ == "__main__":
     Lcon = cp.full(N_con, 0.0, dtype=T)             # 约束条件的下限，这里我们只考虑权重之和最小为0的约束
     Ucon = cp.full(N_con, 0.1, dtype=T)             # 约束条件的上限，这里我们只考虑权重之和最大为1的约束 
     Ucon[0] = 1.0
-    Cls = cp.random.randint(1, N_con, size=N_Assets, dtype=cp.int32)  # 分类向量，用于分类约束，这里我们随机生成一个分类向量，每个元素的值为0,1,2,3,4中的一个
+    Cls = cp.random.randint(1, N_con, size=N_Assets, dtype=cp.int64)  # 分类向量，用于分类约束，这里我们随机生成一个分类向量，每个元素的值为0,1,2,3,4中的一个
     print("开始构建非线性规划的NLPModel模型")
     # 构建NLPModel模型，这里我们直接使用CuPy数组为参数
     julia_model = PortfolioNLPModelCUDA_Construct(Cov_Mat, Stocks_Mean_LR, Cost, Cls, W0, Lambda_risk, W_lb, W_ub, X0, N_con, Y0, Lcon, Ucon)

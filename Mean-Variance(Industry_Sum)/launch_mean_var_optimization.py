@@ -116,7 +116,14 @@ if __name__ == "__main__":
     jl.println("Julia后端调用正常！")               # 调用Julia的println函数，验证Julia环境是否正常
 
     Cost = cp.full(N_Assets, 0.002, dtype=T)        # 交易成本，这里我们假设所有股票的交易成本都是0.2%
-    W0 = cp.full(N_Assets, 1.0/N_Assets, dtype=T)                # 上一时间点的权重向量
+    W0 = cp.zeros(N_Assets, dtype=T)                # 上一时间点的权重向量
+    # 为了验证结果，我们将部分股票的权重设置为非0值
+    W0[1301] = T(0.39949818)                
+    W0[1415] = T(0.32822413)
+    W0[256] = T(0.14476788)
+    W0[797] = T(0.07121188)
+    W0[1299] = T(0.05629793)
+    
     Industry_Count = 40                            # 行业类别数量
 
     Lambda_risk = MyFloat(1.0)  # 风险厌恶系数，由于此参数需要导入到Julia中，所以需要与Julia中的数据类型一致，这里我们使用MyFloat。注意，这里不能使用T类型，因为T类型是GPU上的CuPy数组的数据类型

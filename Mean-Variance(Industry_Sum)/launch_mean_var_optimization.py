@@ -105,7 +105,7 @@ def PortfolioNLPModelCUDA_Construct(CovMat,             # 协方差矩阵, CuPy�
     ucon = CuPyArray2JuliaCuVector(Ucon)
     cls = CuPyArray2JuliaCuIntVector(Cls)
     _, cls_stat = cp.unique(Cls, return_counts=True)
-    cls_number = len(cls_stat)
+    cls_number = len(cls_stat)                # 行业类别的数量
     print(f"类别个数={cls_number}")
     return jl.PortfolioNLPModelCUDA_Construct(mean, cost, cls, w0, Lambda_risk, cov_mat, n_con, x0, y0, w_lb, w_ub, lcon, ucon, cls_number)
 
@@ -125,12 +125,12 @@ if __name__ == "__main__":
     W_lb = cp.full(N_Assets, W_min, dtype=T)        # 权重下限向量（添加对自变量的约束，可以改这里的数组元素）
     W_ub = cp.full(N_Assets, W_max, dtype=T)        # 权重上限向量（添加对自变量的约束，可以改这里的数组元素）
     X0 = cp.full(N_Assets, 1.0/N_Assets, dtype=T)   # 权重计算的初始值向量，这里我们假设所有股票的权重都是相等的，即1/N_Assets。注意这里的X0不参与交易成本的计算，只是用于优化的初始值
-    N_con:int = 11                                   # 约束条件的个数（必须是int64类型），这里我们只考虑权重之和为1的约束
+    N_con:int = 11                                  # 约束条件的个数（必须是int64类型），这里我们考虑权重之和为1的约束和行业权重约束
     Y0 = cp.full(N_con, 1.0, dtype=T)               # 拉格朗日乘子向量，即拉格朗日方程中约束部分的初始系数（里面的元素默认为1）
     Lcon = cp.full(N_con, 0.0, dtype=T)             # 约束条件的下限，这里我们只考虑权重之和最小为0的约束
     Ucon = cp.full(N_con, 0.1, dtype=T)             # 约束条件的上限，这里我们只考虑权重之和最大为1的约束 
     Ucon[0] = 1.0
-    Cls = cp.random.randint(1, N_con, size=N_Assets, dtype=cp.int64)  # 分类向量，用于分类约束，这里我们随机生成一个分类向量，每个元素的值为0,1,2,3,4中的一个
+    Cls = cp.random.randint(1, N_con, size=N_Assets, dtype=cp.int64)  # 分类向量（从1开始），用于分类权重和约束，这里我们随机生成一个分类向量，每个元素的值为1,2,3,4,...,N_con中的一个
     print("开始构建非线性规划的NLPModel模型")
     # 构建NLPModel模型，这里我们直接使用CuPy数组为参数
     julia_model = PortfolioNLPModelCUDA_Construct(Cov_Mat, Stocks_Mean_LR, Cost, Cls, W0, Lambda_risk, W_lb, W_ub, X0, N_con, Y0, Lcon, Ucon)

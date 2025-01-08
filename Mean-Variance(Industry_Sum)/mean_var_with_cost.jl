@@ -41,7 +41,7 @@ mutable struct PortfolioNLPModelCUDA{
     Q::MT                           # 实际计算Hessian时用到的协方差矩阵, 维度为(资产数量×资产数量), 为expo * Σ * expo'
     U::MT                           # 对Σ矩阵进行Cholesky分解后的LU矩阵中的U矩阵，即Σ = LU (L = U', U = L')
     λ_risk::T                       # 风险厌恶系数（标量）
-    Class_Sum::VT                    # 各行业的权重和, 维数为行业的数量
+    Class_Count::MyInt              # 行业的数量(标量)
 end
 
 # 构造函数
@@ -58,8 +58,8 @@ function PortfolioNLPModelCUDA_Construct(
     lvar::VT,        # 自变量向量的下界，即 x[i] >= lvar[i]
     uvar::VT,        # 自变量向量的上界，即 x[i] <= uvar[i]
     lcon::VT,        # 约束向量的下界，即 c[i] >= lcon[i]
-    ucon::VT,         # 约束向量的上界，即 c[i] <= ucon[i]
-    cls_number::Int  # 类别数量
+    ucon::VT,        # 约束向量的上界，即 c[i] <= ucon[i]
+    cls_count::Int   # 行业类别数量
     ) where {T}
     nvar = length(x0)               # 自变量的维数
     n_assets = nvar                 # 在Mean-Variance问题中，资产数量即为自变量的维数
@@ -81,7 +81,6 @@ function PortfolioNLPModelCUDA_Construct(
     lcon_ = lcon
     ucon_ = ucon
     v_buffer_ = CUDA.similar(x0_, n_assets)
-    class_sum_ = CUDA.zeros(T, cls_number)                                    #先将各行业的权重和数组清零
     
     meta = NLPModelMeta(nvar,
                         ncon = n_con,   
@@ -106,7 +105,7 @@ function PortfolioNLPModelCUDA_Construct(
                                     #U_, 
                                     #J, 
                                     λ_risk, 
-                                    class_sum_,
+                                    cls_count,
                                 )
 end
 
@@ -132,12 +131,12 @@ function NLPModels.grad!(nlp::PortfolioNLPModelCUDA{T,VT,MT}, x::AbstractVector{
 end
 
 # CUDA核函数，用于求各行业的权重和。x为所以股票的权重数组，cls为维度与x相同的整数编号数组（用于表示每只股票的行业分类），cls_sum为每类行业的权重和，n为股票的总支数；
-function sum_by_class_kernel!(x, cls, cls_sum, n)
+function sum_by_class_kernel!(x, cls, cls_sum, n, cls_count)
     idx = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
     if idx <= n
         cls_idx = cls[idx]
         val = x[idx]
-        if cls_idx <= length(cls_sum) && cls_idx >= 1
+        if cls_idx <= cls_count && cls_idx >= 1
             CUDA.@atomic cls_sum[cls_idx] += val
         end
     end   
@@ -162,15 +161,14 @@ function NLPModels.cons!(nlp::PortfolioNLPModelCUDA{T,VT,MT}, x::AbstractVector{
     nlp.Counters.neval_cons += 1
     n = nlp.meta.nvar
     CUDA.fill!(c, zero(T))
-    CUDA.fill!(nlp.Class_Sum, zero(T))
+    CUDA.fill!(nlp.V_Buffer, zero(T))
     c[1] = CUDA.sum(x)  # 资金总和约束
     
     # 调用 CUDA 核函数
     threads = 256  # 每个线程块的线程数
     blocks = ceil(Int, n / threads)  # 计算需要的线程块数
-    CUDA.@cuda threads=threads blocks=blocks sum_by_class_kernel!(x, nlp.Class, nlp.Class_Sum, n)
-    number_cls = length(nlp.Class_Sum)
-    c[2:1+number_cls] .= nlp.Class_Sum
+    CUDA.@cuda threads=threads blocks=blocks sum_by_class_kernel!(x, nlp.Class, nlp.V_Buffer, n, nlp.Class_Count)
+    c[2:1+nlp.Class_Count] .= nlp.V_Buffer[1:nlp.Class_Count]
     #println(c)
     return c
 end
@@ -220,4 +218,3 @@ function update_parameters(nlp::NLPModels.AbstractNLPModel, x0::CUDA.CuVector{T}
     nlp.U = cholcopy(cholesky_result.U)     #U就是L'
     return nothing
 end
-

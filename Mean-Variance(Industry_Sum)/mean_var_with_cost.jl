@@ -14,7 +14,7 @@ CUDA.allowscalar(true)
 T = Float64             # 目前可以设置为使用Float32或Float64两种精度，推荐使用Float64，因为Float32精度较低，可能会导致小幅计算误差
 VT = CUDA.CuVector{T}   # 使用T类型的向量类型CuVector
 MT = CUDA.CuMatrix{T}   # 使用T类型的矩阵类型CuMatrix
-MyInt = Int32           # 整数类型
+MyInt = Int64           # 整数类型
 VI = CUDA.CuVector{MyInt}  # 使用MyInt类型的向量类型CuVector
 # 设置快速计算模式，并利用TensorCore加速计算, 但是这个设置有可能影响计算精度
 CUDA.math_mode!(CUDA.FAST_MATH)

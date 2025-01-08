@@ -104,10 +104,10 @@ def PortfolioNLPModelCUDA_Construct(CovMat,             # 协方差矩阵, CuPy�
     lcon = CuPyArray2JuliaCuVector(Lcon)
     ucon = CuPyArray2JuliaCuVector(Ucon)
     cls = CuPyArray2JuliaCuIntVector(Cls)
-    _, cls_stat = cp.unique(Cls, return_counts=True)
-    cls_number = len(cls_stat)                # 行业类别的数量
-    print(f"类别个数={cls_number}")
-    return jl.PortfolioNLPModelCUDA_Construct(mean, cost, cls, w0, Lambda_risk, cov_mat, n_con, x0, y0, w_lb, w_ub, lcon, ucon, cls_number)
+    cls_stat = cp.unique(Cls)
+    cls_count = len(cls_stat)                # 行业类别的数量
+    print(f"类别个数={cls_count}")
+    return jl.PortfolioNLPModelCUDA_Construct(mean, cost, cls, w0, Lambda_risk, cov_mat, n_con, x0, y0, w_lb, w_ub, lcon, ucon, cls_count)
 
 if __name__ == "__main__":
     Stocks_Mean_LR = cp.loadtxt('/nvtest/stocks_lr_mean.csv', dtype=T)  # 读取股票的平均收益率
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     Cost = cp.full(N_Assets, 0.002, dtype=T)        # 交易成本，这里我们假设所有股票的交易成本都是0.2%
     W0 = cp.full(N_Assets, 1.0/N_Assets, dtype=T)                # 上一时间点的权重向量
-
+    Industry_Count = 40                            # 行业类别数量
 
     Lambda_risk = MyFloat(1.0)  # 风险厌恶系数，由于此参数需要导入到Julia中，所以需要与Julia中的数据类型一致，这里我们使用MyFloat。注意，这里不能使用T类型，因为T类型是GPU上的CuPy数组的数据类型
     W_min = 0.0                 # 权重下限
@@ -125,12 +125,12 @@ if __name__ == "__main__":
     W_lb = cp.full(N_Assets, W_min, dtype=T)        # 权重下限向量（添加对自变量的约束，可以改这里的数组元素）
     W_ub = cp.full(N_Assets, W_max, dtype=T)        # 权重上限向量（添加对自变量的约束，可以改这里的数组元素）
     X0 = cp.full(N_Assets, 1.0/N_Assets, dtype=T)   # 权重计算的初始值向量，这里我们假设所有股票的权重都是相等的，即1/N_Assets。注意这里的X0不参与交易成本的计算，只是用于优化的初始值
-    N_con:int = 11                                  # 约束条件的个数（必须是int64类型），这里我们考虑权重之和为1的约束和行业权重约束
+    N_con:int = 1 + Industry_Count                                  # 约束条件的个数（必须是int64类型），这里我们考虑权重之和为1的约束和行业权重约束
     Y0 = cp.full(N_con, 1.0, dtype=T)               # 拉格朗日乘子向量，即拉格朗日方程中约束部分的初始系数（里面的元素默认为1）
     Lcon = cp.full(N_con, 0.0, dtype=T)             # 约束条件的下限，这里我们只考虑权重之和最小为0的约束
     Ucon = cp.full(N_con, 0.1, dtype=T)             # 约束条件的上限，这里我们只考虑权重之和最大为1的约束 
-    Ucon[0] = 1.0
-    Cls = cp.random.randint(1, N_con, size=N_Assets, dtype=cp.int64)  # 分类向量（从1开始，与Julia代码中MyInt的格式相同），用于分类权重和约束，这里我们随机生成一个分类向量，每个元素的值为1,2,3,4,...,N_con中的一个
+    Ucon[0] = 1.0                                   # 权重总和约束上限
+    Cls = cp.random.randint(1, Industry_Count+1, size=N_Assets, dtype=cp.int64)  # 分类向量（从1开始，与Julia代码中MyInt的格式相同），用于分类权重和约束，这里我们随机生成一个分类向量，每个元素的值为1,2,3,4,...,N_con中的一个
     print("开始构建非线性规划的NLPModel模型")
     # 构建NLPModel模型，这里我们直接使用CuPy数组为参数
     julia_model = PortfolioNLPModelCUDA_Construct(Cov_Mat, Stocks_Mean_LR, Cost, Cls, W0, Lambda_risk, W_lb, W_ub, X0, N_con, Y0, Lcon, Ucon)
@@ -140,7 +140,7 @@ if __name__ == "__main__":
                                                 tol = TOL,          # 精度容忍度，当两次迭代的目标函数值差小于该值时，停止迭代。对于float64，1.2e-8是一个合理的值, 对于float32，可以适当放宽到1.2e-6
                                                 callback = jl.MadNLP.DenseCallback, # 回调函数，用于在每次迭代后记录信息或进行其他操作。MadNLP.DenseCallback是一个简单的回调函数，用于记录每次迭代的信息。
                                                 kkt_system = jl.MadNLP.DenseCondensedKKTSystem, # KKT系统求解器，MadNLP.DenseCondensedKKTSystem是一个适用于稠密问题的求解器。
-                                                max_iter = 150,    # 最大迭代次数，当迭代次数达到该值时，停止迭代。
+                                                max_iter = 200,    # 最大迭代次数，当迭代次数达到该值时，停止迭代。
                                                 jacobian_constant = True,   # 是否为常数雅可比矩阵, 对于Mean-Var模型，雅可比矩阵是常数
                                                 hessian_constant = True,    # 是否为常数黑塞矩阵, 对于Mean-Var模型，黑塞矩阵是常数
                                                 linear_solver = jl.MadNLPGPU.LapackGPUSolver,   # 线性求解器，MadNLPGPU.LapackGPUSolver是一个基于cuSolver的求解器。

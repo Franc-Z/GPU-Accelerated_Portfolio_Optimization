@@ -85,6 +85,13 @@ add NLPModels MadNLP MadNLPGPU LinearAlgebra PythonCall CUDA
 按backspace键即可
 ```
 
+更新MadNLP.jl到最新（此处为了修正一个影响Float32性能的小bug）：
+
+```julia
+using Pkg
+Pkg.add(url="https://github.com/MadNLP/MadNLP.jl.git",rev="ss/refinement_tol")
+```
+
 退出Julia环境：
 
 ```julia

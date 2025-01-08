@@ -14,7 +14,7 @@ CUDA.allowscalar(true)
 T = Float64             # 目前可以设置为使用Float32或Float64两种精度，推荐使用Float64，因为Float32精度较低，可能会导致小幅计算误差
 VT = CUDA.CuVector{T}   # 使用T类型的向量类型CuVector
 MT = CUDA.CuMatrix{T}   # 使用T类型的矩阵类型CuMatrix
-MyInt = Int64           # 整数类型
+MyInt = Int32           # 整数类型
 VI = CUDA.CuVector{MyInt}  # 使用MyInt类型的向量类型CuVector
 # 设置快速计算模式，并利用TensorCore加速计算, 但是这个设置有可能影响计算精度
 CUDA.math_mode!(CUDA.FAST_MATH)
@@ -34,14 +34,14 @@ mutable struct PortfolioNLPModelCUDA{
     Counters::Counters              # 用于记录计算次数的计数器
     µ::VT                           # 平均log回报率向量µ
     Cost::VT                        # 交易成本向量，维数与µ相同
-    Class::VI                       # 每个资产所属的类别，维数与µ相同
+    Class::VI                       # 每个资产所属的类别编号（必须连续，且从1开始），维数与µ相同
     w0::VT                          # 优化前的权重向量，维数与µ相同，用于计算交易成本
     V_Buffer::VT                    # 临时变量，用于存储中间计算结果
     #Σ::MT                          # Σ矩阵，即考虑暴露因子后的协方差矩阵（一般为50x50）
     Q::MT                           # 实际计算Hessian时用到的协方差矩阵, 维度为(资产数量×资产数量), 为expo * Σ * expo'
     U::MT                           # 对Σ矩阵进行Cholesky分解后的LU矩阵中的U矩阵，即Σ = LU (L = U', U = L')
     λ_risk::T                       # 风险厌恶系数（标量）
-    Class_Sum::VT                # 类别向量中的唯一值, 维数为类别数量
+    Class_Sum::VT                    # 各行业的权重和, 维数为行业的数量
 end
 
 # 构造函数
@@ -81,7 +81,7 @@ function PortfolioNLPModelCUDA_Construct(
     lcon_ = lcon
     ucon_ = ucon
     v_buffer_ = CUDA.similar(x0_, n_assets)
-    class_sum_ = CUDA.zeros(T, cls_number)
+    class_sum_ = CUDA.zeros(T, cls_number)                                    #先将各行业的权重和数组清零
     
     meta = NLPModelMeta(nvar,
                         ncon = n_con,   
@@ -131,6 +131,7 @@ function NLPModels.grad!(nlp::PortfolioNLPModelCUDA{T,VT,MT}, x::AbstractVector{
     return g
 end
 
+# CUDA核函数，用于求各行业的权重和。x为所以股票的权重数组，cls为维度与x相同的整数编号数组（用于表示每只股票的行业分类），cls_sum为每类行业的权重和，n为股票的总支数；
 function sum_by_class_kernel!(x, cls, cls_sum, n)
     idx = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
     if idx <= n
@@ -143,6 +144,8 @@ function sum_by_class_kernel!(x, cls, cls_sum, n)
     return nothing
 end
 
+# CUDA核函数，用于设定条件约束的Jacobian矩阵。
+# 其中cls为维度与x相同的整数编号数组（用于表示每只股票的行业分类），J为条件约束的雅可比矩阵，n_con为条件约束的个数，n为股票的总支数，start_idx为条件约束的起始序号（一般为2，第一个是资金总和约束）
 function set_Jacobian_by_class_kernel!(cls, J, n_con, n, start_idx)
     idx = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
     if idx <= n

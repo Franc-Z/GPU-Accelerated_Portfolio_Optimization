@@ -5,28 +5,7 @@ import numpy as np
 import os
 import time
 
-
-"""
-Purpose:
-    Computes several portfolios on the optimal portfolios by
-
-        for alpha in alphas:
-            maximize   expected return - alpha * variance
-            subject to the constraints
-
-Input:
-    n: Number of assets
-    mu: An n dimensional vector of expected returns
-    GT: A matrix with n columns so (GT')*GT  = covariance matrix
-    x0: Initial holdings
-    w: Initial cash holding
-    alphas: List of the alphas
-
-Output:
-    The efficient frontier as list of tuples (alpha, expected return, variance)
-"""
-def EfficientFrontier(n,mu,GT,x0,w,lambda_risk):
-
+def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_industry_weight, transaction_cost):
     with Model("Efficient frontier") as M:
         frontier = []
         # 例如，将线程数设置为 1
@@ -39,15 +18,35 @@ def EfficientFrontier(n,mu,GT,x0,w,lambda_risk):
         M.constraint('budget', Expr.sum(x) == w+sum(x0))
 
         # Computes the risk
-        #M.constraint('risk', Expr.vstack(s, GT @ x) == Domain.inQCone())
         M.constraint('variance', Expr.vstack(s, 0.5, Expr.mul(GT, x)), Domain.inRotatedQCone())
 
         # Define objective as a weighted combination of return and variance
         alpha = M.parameter()
-        M.objective('obj', ObjectiveSense.Maximize, x.T @ mu - s * alpha)
         
+        # Calculate transaction cost
+        # Introduce auxiliary variable for absolute value of trades
+        y = M.variable("y", n, Domain.greaterThan(0.0))  # y = |x - x0|
+        
+        # Add constraints to enforce y = |x - x0|
+        M.constraint('abs_constraint_pos', Expr.sub(y, Expr.sub(x, x0)), Domain.greaterThan(0.0))
+        M.constraint('abs_constraint_neg', Expr.add(y, Expr.sub(x, x0)), Domain.greaterThan(0.0))
+        
+        # Calculate L1 norm of (x - x0)
+        l1_norm = Expr.sum(y)
+        
+        # Calculate transaction cost (proportional to L1 norm)
+        transaction_cost_term = transaction_cost * l1_norm
+        
+        # Modify objective to include transaction cost
+        M.objective('obj', ObjectiveSense.Maximize, x.T @ mu - s * alpha - transaction_cost_term)
+        
+        # Add industry constraints
+        unique_industries = np.unique(industry_labels)
+        for industry in unique_industries:
+            industry_indices = np.where(industry_labels == industry)[0].astype(np.int32)
+            M.constraint(f'industry_{industry}', Expr.sum(x.pick(industry_indices)) <= max_industry_weight)
+
         # Solve multiple instances by varying the parameter alpha
-        
         alpha.setValue(lambda_risk)
         M.solve()  
         start = time.time()
@@ -60,36 +59,45 @@ def EfficientFrontier(n,mu,GT,x0,w,lambda_risk):
             # See https://docs.mosek.com/latest/pythonfusion/accessing-solution.html about handling solution statuses.
             raise Exception(f"Unexpected solution status: {solsta}")
 
-        print(np.sort(x.level())[-1:-8:-1])
-        print(np.argsort(x.level())[-1:-8:-1]+1)
+        TopK = 15
+        print(np.sort(x.level())[-1:-TopK:-1])
+        print(np.argsort(x.level())[-1:-TopK:-1]+1)
         frontier.append((np.dot(mu,x.level()), s.level()[0]))
 
         return frontier
 
-u_csv = "./stocks_lr_mean.csv"
-cov_csv = "./cov_mat.csv"
-os.environ["MOSEKLM_LICENSE_FILE"] = "./license/2400_mosek.lic"
+u_csv = "/nvtest/stocks_lr_mean.csv"
+cov_csv = "/nvtest/cov_mat.csv"
+os.environ["MOSEKLM_LICENSE_FILE"] = "/nvtest/mosek_lic/mosek.lic"
 
 if __name__ == '__main__':
     mu = np.loadtxt(u_csv)
     Q = np.loadtxt(cov_csv)
     n = Q.shape[0]
-    w = 1.0   
+    w = 0.0   #如果sum(x0)的初始值为1.0的话，w的初始值就应该为0.0
     
-    x0 = np.zeros(n,dtype=np.float64)
+    x0 = np.full(n, 1.0/n, dtype=np.float64)
     GT = np.linalg.cholesky(Q).T
+
+    # Example industry labels (replace with actual industry labels)
+    #industry_labels = np.random.randint(1, 41, size=n,dtype=np.int32)
+    #np.savetxt("/nvtest/industry_labels.csv", industry_labels, fmt='%d')
+    industry_labels = np.loadtxt("/nvtest/industry_labels.csv", dtype=np.int32)
+
+    # Maximum weight for each industry (e.g., 10%)
+    max_industry_weight = 0.10
+
+    # Transaction cost per unit of trade
+    transaction_cost = 0.002  # 0.2% transaction cost
+
     # Some predefined alphas are chosen
     alpha = 1.0
     with mosek.Env() as env:
-        assert env.getversion() == (10, 2, 11)
-        frontier= EfficientFrontier(n,mu,GT,x0,w,alpha)
+        assert env.getversion() == (10, 2, 13)
+        frontier = EfficientFrontier(n, mu, GT, x0, w, alpha, industry_labels, max_industry_weight, transaction_cost)
         print("\n-----------------------------------------------------------------------------------")
         print('Efficient frontier')
         print("-----------------------------------------------------------------------------------\n")
         print('%-12s  %-12s' % ('return','risk (variance)'))
         for i in frontier:
             print('%-12.4f  %-12.4e ' % (i[0],i[1]))
-
-
-
-

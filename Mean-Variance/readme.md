@@ -19,7 +19,7 @@ $$
 1. **变量范围约束**：
 
    $$
-   0 \leq h \leq 0.02
+   W_{\text{min}} \leq h \leq W_{\text{max}}
    $$
 
    $$

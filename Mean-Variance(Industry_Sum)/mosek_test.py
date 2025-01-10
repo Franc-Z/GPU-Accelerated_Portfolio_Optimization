@@ -45,8 +45,9 @@ def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_indust
             # See https://docs.mosek.com/latest/pythonfusion/accessing-solution.html about handling solution statuses.
             raise Exception(f"Unexpected solution status: {solsta}")
 
-        print(np.sort(x.level())[-1:-8:-1])
-        print(np.argsort(x.level())[-1:-8:-1]+1)
+        TopK = 10
+        print(np.sort(x.level())[-1:-TopK:-1])
+        print(np.argsort(x.level())[-1:-TopK:-1]+1)
         frontier.append((np.dot(mu,x.level()), s.level()[0]))
 
         return frontier

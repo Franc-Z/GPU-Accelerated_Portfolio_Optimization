@@ -9,7 +9,7 @@ def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_indust
     with Model("Efficient frontier") as M:
         frontier = []
         # 例如，将线程数设置为 1
-        M.setSolverParam("numThreads", 1)
+        M.setSolverParam("numThreads", 10)
         # Defines the variables (holdings). Shortselling is not allowed.
         x = M.variable("x", n, Domain.greaterThan(0.0)) # Portfolio variables
         s = M.variable("s", 1, Domain.unbounded())      # Variance variable
@@ -59,7 +59,7 @@ def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_indust
             # See https://docs.mosek.com/latest/pythonfusion/accessing-solution.html about handling solution statuses.
             raise Exception(f"Unexpected solution status: {solsta}")
 
-        TopK = 10
+        TopK = 15
         print(np.sort(x.level())[-1:-TopK:-1])
         print(np.argsort(x.level())[-1:-TopK:-1]+1)
         frontier.append((np.dot(mu,x.level()), s.level()[0]))
@@ -74,14 +74,16 @@ if __name__ == '__main__':
     mu = np.loadtxt(u_csv)
     Q = np.loadtxt(cov_csv)
     n = Q.shape[0]
-    w = 1.0   
+    w = 0.0   #如果sum(x0)的初始值为1.0的话，w的初始值就应该为0.0
     
     x0 = np.full(n, 1.0/n, dtype=np.float64)
     GT = np.linalg.cholesky(Q).T
 
     # Example industry labels (replace with actual industry labels)
-    industry_labels = np.random.randint(1, 41, size=n,dtype=np.int32)
-    
+    #industry_labels = np.random.randint(1, 41, size=n,dtype=np.int32)
+    #np.savetxt("/nvtest/industry_labels.csv", industry_labels, fmt='%d')
+    industry_labels = np.loadtxt("/nvtest/industry_labels.csv", dtype=np.int32)
+
     # Maximum weight for each industry (e.g., 10%)
     max_industry_weight = 0.10
 

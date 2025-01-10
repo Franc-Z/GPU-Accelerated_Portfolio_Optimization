@@ -1,1 +1,3 @@
-本目录内的代码的原理和使用方法同Mean-Variance。只不过考虑了行业权重总和约束。具体请见代码，或联系我。
+本目录内的代码的原理和使用方法同Mean-Variance。只不过考虑了行业权重总和约束。
+本文件夹下的industry_labels.csv文件为对4558支股票的行业分类（随机数分类，从1~40），可以使用mosek_test.py和launch_mean_var_optimization.py进行benchmark对照性能和优化结果。
+具体请见代码，或联系我。

@@ -114,8 +114,8 @@ if __name__ == "__main__":
     N_Var = N_Assets + 1        # 变量的个数，即股票数量+1，多出来的一个变量是辅助变量sqrt(w'Σw)
     Lambda_risk = MyFloat(1.0)  # 风险厌恶系数，由于此参数需要导入到Julia中，所以需要与Julia中的数据类型一致，这里我们使用MyFloat。注意，这里不能使用T类型，因为T类型是GPU上的CuPy数组的数据类型
     Risk_Free_Rate = MyFloat(0.04)  # 无风险利率
-    W_min = 0.0                 # 权重下限
-    W_max = 1.0                 # 权重上限
+    W_min = 0.0                 # 权重下限（标量）
+    W_max = 1.0                 # 权重上限（标量）
     Risk_min = 0.0              # 风险下限，如果需要固定风险收益分析，可以设置风险下限和风险上限都为同一常量
     Risk_max = 1.0              # 风险上限
     W_lb = cp.full(N_Var, W_min, dtype=T)       # 权重下限向量，如果需要对每支股票的权重上下限进行微调，可以在这里进行微调

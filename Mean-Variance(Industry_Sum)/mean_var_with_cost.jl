@@ -135,9 +135,8 @@ function sum_by_class_kernel!(x, cls, cls_sum, n, cls_count)
     idx = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
     if idx <= n
         cls_idx = cls[idx]
-        val = x[idx]
         if cls_idx <= cls_count && cls_idx >= 1
-            CUDA.@atomic cls_sum[cls_idx] += val
+            CUDA.atomic_add!(CUDA.pointer(cls_sum, cls_idx), x[idx])
         end
     end   
     return nothing
@@ -165,7 +164,7 @@ function NLPModels.cons!(nlp::PortfolioNLPModelCUDA{T,VT,MT}, x::AbstractVector{
     c[1] = CUDA.sum(x)  # 资金总和约束
     
     # 调用 CUDA 核函数
-    threads = 256  # 每个线程块的线程数
+    threads = 64  # 每个线程块的线程数
     blocks = ceil(Int, n / threads)  # 计算需要的线程块数
     CUDA.@cuda threads=threads blocks=blocks sum_by_class_kernel!(x, nlp.Class, nlp.V_Buffer, n, nlp.Class_Count)
     c[2:1+nlp.Class_Count] .= nlp.V_Buffer[1:nlp.Class_Count]
@@ -180,7 +179,7 @@ function MadNLP.jac_dense!(nlp::PortfolioNLPModelCUDA{T,VT,MT}, x::AbstractVecto
     n_con = nlp.meta.ncon
     CUDA.fill!(J, zero(T))
     J[1, 1:end] .= one(T)   # 约束条件只有一个，即权重求和项，因此对x[i]的导数均为1，因此此处填充J为1
-    threads = 256           # 每个线程块的线程数
+    threads = 64           # 每个线程块的线程数
     blocks = ceil(Int, n / threads)  # 计算需要的线程块数
     CUDA.@cuda threads=threads blocks=blocks set_Jacobian_by_class_kernel!(nlp.Class, J, n_con, n, 2)
     return J                #对于线性约束，J不随x变化

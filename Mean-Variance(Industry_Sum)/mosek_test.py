@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 
-def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_industry_weight):
+def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_industry_weight, transaction_cost):
     with Model("Efficient frontier") as M:
         frontier = []
         # 例如，将线程数设置为 1
@@ -22,15 +22,29 @@ def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_indust
 
         # Define objective as a weighted combination of return and variance
         alpha = M.parameter()
-        M.objective('obj', ObjectiveSense.Maximize, x.T @ mu - s * alpha)
         
-        # Add industry constraints
+        # Calculate transaction cost
+        # Introduce auxiliary variable for absolute value of trades
+        y = M.variable("y", n, Domain.greaterThan(0.0))  # y = |x - x0|
+        
+        # Add constraints to enforce y = |x - x0|
+        M.constraint('abs_constraint_pos', Expr.sub(y, Expr.sub(x, x0)), Domain.greaterThan(0.0))
+        M.constraint('abs_constraint_neg', Expr.add(y, Expr.sub(x, x0)), Domain.greaterThan(0.0))
+        
+        # Calculate L1 norm of (x - x0)
+        l1_norm = Expr.sum(y)
+        
+        # Calculate transaction cost (proportional to L1 norm)
+        transaction_cost_term = transaction_cost * l1_norm
+        
+        # Modify objective to include transaction cost
+        M.objective('obj', ObjectiveSense.Maximize, x.T @ mu - s * alpha - transaction_cost_term)
+        
         # Add industry constraints
         unique_industries = np.unique(industry_labels)
         for industry in unique_industries:
             industry_indices = np.where(industry_labels == industry)[0].astype(np.int32)
             M.constraint(f'industry_{industry}', Expr.sum(x.pick(industry_indices)) <= max_industry_weight)
-
 
         # Solve multiple instances by varying the parameter alpha
         alpha.setValue(lambda_risk)
@@ -62,7 +76,7 @@ if __name__ == '__main__':
     n = Q.shape[0]
     w = 1.0   
     
-    x0 = np.zeros(n, dtype=np.float64)
+    x0 = np.full(n, 1.0/n, dtype=np.float64)
     GT = np.linalg.cholesky(Q).T
 
     # Example industry labels (replace with actual industry labels)
@@ -71,11 +85,14 @@ if __name__ == '__main__':
     # Maximum weight for each industry (e.g., 10%)
     max_industry_weight = 0.10
 
+    # Transaction cost per unit of trade
+    transaction_cost = 0.002  # 0.2% transaction cost
+
     # Some predefined alphas are chosen
     alpha = 1.0
     with mosek.Env() as env:
         assert env.getversion() == (10, 2, 13)
-        frontier = EfficientFrontier(n, mu, GT, x0, w, alpha, industry_labels, max_industry_weight)
+        frontier = EfficientFrontier(n, mu, GT, x0, w, alpha, industry_labels, max_industry_weight, transaction_cost)
         print("\n-----------------------------------------------------------------------------------")
         print('Efficient frontier')
         print("-----------------------------------------------------------------------------------\n")

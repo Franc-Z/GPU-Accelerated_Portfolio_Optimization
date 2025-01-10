@@ -10,7 +10,7 @@ from time import time
 #import cudf as pd
 
 # Julia代码路径，最好能给容器里的绝对路径
-JULIA_CODE_PATH = "/nvtest/GPU-Accelerated_Portfolio_Optimization/Mean-Variance/mean_var_with_cost.jl"
+JULIA_CODE_PATH = "/nvtest/GPU-Accelerated_Portfolio_Optimization_2/Mean-Variance(Industry_Sum)/mean_var_with_cost.jl"
 # 检查Julia代码路径是否存在
 if not exists(JULIA_CODE_PATH):
     raise FileNotFoundError(f"Julia代码路径 {JULIA_CODE_PATH} 不存在")
@@ -116,19 +116,20 @@ if __name__ == "__main__":
     jl.println("Julia后端调用正常！")               # 调用Julia的println函数，验证Julia环境是否正常
 
     Cost = cp.full(N_Assets, 0.002, dtype=T)        # 交易成本，这里我们假设所有股票的交易成本都是0.2%
-    W0 = cp.zeros(N_Assets, dtype=T)                # 上一时间点的权重向量
+    W0 = cp.full(N_Assets, 1.0/N_Assets, dtype=T)                # 上一时间点的权重向量
     # 为了验证结果，我们将部分股票的权重设置为非0值
+    '''
     W0[1301] = T(0.39949818)                
     W0[1415] = T(0.32822413)
     W0[256] = T(0.14476788)
     W0[797] = T(0.07121188)
     W0[1299] = T(0.05629793)
-    
+    '''
     Industry_Count = 40                            # 行业类别数量
 
     Lambda_risk = MyFloat(1.0)  # 风险厌恶系数，由于此参数需要导入到Julia中，所以需要与Julia中的数据类型一致，这里我们使用MyFloat。注意，这里不能使用T类型，因为T类型是GPU上的CuPy数组的数据类型
     W_min = 0.0                 # 权重下限
-    W_max = 0.2                 # 权重上限
+    W_max = 0.1                 # 权重上限
     W_lb = cp.full(N_Assets, W_min, dtype=T)        # 权重下限向量（添加对自变量的约束，可以改这里的数组元素）
     W_ub = cp.full(N_Assets, W_max, dtype=T)        # 权重上限向量（添加对自变量的约束，可以改这里的数组元素）
     X0 = cp.full(N_Assets, 1.0/N_Assets, dtype=T)   # 权重计算的初始值向量，这里我们假设所有股票的权重都是相等的，即1/N_Assets。注意这里的X0不参与交易成本的计算，只是用于优化的初始值
@@ -137,7 +138,8 @@ if __name__ == "__main__":
     Lcon = cp.full(N_con, 0.0, dtype=T)             # 约束条件的下限，这里我们只考虑权重之和最小为0的约束
     Ucon = cp.full(N_con, 0.1, dtype=T)             # 约束条件的上限，这里我们只考虑权重之和最大为1的约束 
     Ucon[0] = 1.0                                   # 权重总和约束上限
-    Cls = cp.random.randint(1, Industry_Count+1, size=N_Assets, dtype=cp.int64)  # 分类向量（从1开始，与Julia代码中MyInt的格式相同），用于分类权重和约束，这里我们随机生成一个分类向量，每个元素的值为1,2,3,4,...,N_con中的一个
+    #Cls = cp.random.randint(1, Industry_Count+1, size=N_Assets, dtype=cp.int64)  # 分类向量（从1开始，与Julia代码中MyInt的格式相同），用于分类权重和约束，这里我们随机生成一个分类向量，每个元素的值为1,2,3,4,...,N_con中的一个
+    Cls = cp.loadtxt('/nvtest/industry_labels.csv', dtype=cp.int64)
     print("开始构建非线性规划的NLPModel模型")
     # 构建NLPModel模型，这里我们直接使用CuPy数组为参数
     julia_model = PortfolioNLPModelCUDA_Construct(Cov_Mat, Stocks_Mean_LR, Cost, Cls, W0, Lambda_risk, W_lb, W_ub, X0, N_con, Y0, Lcon, Ucon)
@@ -152,7 +154,7 @@ if __name__ == "__main__":
                                                 hessian_constant = True,    # 是否为常数黑塞矩阵, 对于Mean-Var模型，黑塞矩阵是常数
                                                 linear_solver = jl.MadNLPGPU.LapackGPUSolver,   # 线性求解器，MadNLPGPU.LapackGPUSolver是一个基于cuSolver的求解器。
                                                 lapack_algorithm = jl.MadNLP.CHOLESKY,          # 求解器的算法，MadNLP.CHOLESKY是一个求解器的算法。适用于KKT矩阵为对称正定矩阵的情况。
-                                                equality_treatment = jl.MadNLP.EnforceEquality, # 等式约束的处理方式，MadNLP.EnforceEquality是一个处理等式约束的方法。
+                                                equality_treatment = jl.MadNLP.RelaxEquality, # 等式约束的处理方式，MadNLP.EnforceEquality是一个处理等式约束的方法。
                                                 print_level = jl.MadNLP.INFO,                   # 输出信息的级别，具体见https://madnlp.github.io/MadNLP.jl/stable/options/#Output-options
                                             )
     # 首次调用MadNLP求解，注意Julia首次执行会包括编译时间，所以首次求解会相对慢一些。后续求解会快很多
@@ -166,8 +168,10 @@ if __name__ == "__main__":
     # 打印结果
     print("求解状态: ", julia_results.status)                   # 求解状态
     print("目标函数值: ", -(julia_results.objective))           # 目标函数最优化取值
-    print("TOP-5权重向量: ")
-    print(cp.flip(cp.partition(JuliaCuVector2CuPyArray(julia_results.solution), -5)[-5:]))
+    
+    TopK = 15
+    print(f"TOP-{TopK}权重向量: ")
+    print(cp.flip(cp.partition(JuliaCuVector2CuPyArray(julia_results.solution), -TopK)[-TopK:]))
 
     # 更新参数，重新求解，这里我们只更新了均值和协方差矩阵
     jl.update_parameters(julia_model,                               # NLPModels的模型 
@@ -182,5 +186,5 @@ if __name__ == "__main__":
     # 打印结果
     print("求解状态: ", julia_results.status)                   # 求解状态
     print("目标函数值: ", -(julia_results.objective))           # 目标函数最优化取值
-    print("TOP-5权重向量: ")
-    print(cp.flip(cp.partition(JuliaCuVector2CuPyArray(julia_results.solution), -5)[-5:]))
+    print(f"TOP-{TopK}权重向量: ")
+    print(cp.flip(cp.partition(JuliaCuVector2CuPyArray(julia_results.solution), -TopK)[-TopK:]))

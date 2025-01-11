@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 
-def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_industry_weight, transaction_cost):
+def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_industry_weight, transaction_cost, risk_free_rate):
     with Model("Efficient frontier") as M:
         frontier = []
         # 例如，将线程数设置为 1
@@ -37,8 +37,9 @@ def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_indust
         # Calculate transaction cost (proportional to L1 norm)
         transaction_cost_term = transaction_cost * l1_norm
         
-        # Modify objective to include transaction cost
-        M.objective('obj', ObjectiveSense.Maximize, x.T @ mu - s * alpha - transaction_cost_term)
+        # Modify objective to include transaction cost and risk-free rate
+        excess_return = x.T @ mu - risk_free_rate
+        M.objective('obj', ObjectiveSense.Maximize, excess_return - s * alpha - transaction_cost_term)
         
         # Add industry constraints
         unique_industries = np.unique(industry_labels)
@@ -90,11 +91,14 @@ if __name__ == '__main__':
     # Transaction cost per unit of trade
     transaction_cost = 0.002  # 0.2% transaction cost
 
+    # Risk-free rate
+    risk_free_rate = 0.04  # 4% risk-free rate
+
     # Some predefined alphas are chosen
     alpha = 1.0
     with mosek.Env() as env:
         assert env.getversion() == (10, 2, 13)
-        frontier = EfficientFrontier(n, mu, GT, x0, w, alpha, industry_labels, max_industry_weight, transaction_cost)
+        frontier = EfficientFrontier(n, mu, GT, x0, w, alpha, industry_labels, max_industry_weight, transaction_cost, risk_free_rate)
         print("\n-----------------------------------------------------------------------------------")
         print('Efficient frontier')
         print("-----------------------------------------------------------------------------------\n")

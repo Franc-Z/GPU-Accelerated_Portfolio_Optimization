@@ -159,7 +159,7 @@ end
 function NLPModels.cons!(nlp::PortfolioNLPModelCUDA{T,VT,MT}, x::AbstractVector{T}, c::AbstractVector{T}) where {T, VT, MT}
     nlp.Counters.neval_cons += 1
     n = nlp.meta.nvar
-    CUDA.fill!(c, zero(T))
+    #CUDA.fill!(c, zero(T))
     CUDA.fill!(nlp.V_Buffer, zero(T))
     c[1] = CUDA.sum(x)  # 资金总和约束
     

@@ -239,24 +239,20 @@ function MadNLP.jac_dense!(nlp::PortfolioNLPModelCUDA, x::AbstractVector{T}, J::
     n = nvar - 1
     x_var = x[1:n]
     t = x[end]
+    CUDA.fill!(J, zero(T))
 
     # 第一行对应二阶锥约束，对 x[i] 的偏导数为2*Σ*x[i]，对 t 的偏导数为-2*t
-    CUDA.CUBLAS.mul!(nlp.V_buffer, nlp.Σ, x_var)
-    J[1, 1:n] = T(2).*nlp.V_buffer'    
+    CUDA.CUBLAS.mul!(nlp.V_Buffer, nlp.Σ, x_var)
+    J[1, 1:n] = T(2).*nlp.V_Buffer'    
     J[1, end] = T(-2)*t
 
     # 第二行对应资金总和约束，对 x[i] 的偏导数为1
     J[2, 1:n] .= one(T)
-    J[2, end] = zero(T)
+    #J[2, end] = zero(T)
 
-    # 第三行及以后对应行业权重约束，对 x[i] 的偏导数为1（如果属于该行业）
-    for k in 1:length(nlp.industries)
-        J[2+k, 1:n] .= zero(T)
-        for i in nlp.industries[k]
-            J[2+k, i] = one(T)
-        end
-        J[2+k, end] = zero(T)
-    end
+    threads = 64           # 每个线程块的线程数
+    blocks = ceil(Int, n / threads)  # 计算需要的线程块数
+    CUDA.@cuda threads=threads blocks=blocks set_Jacobian_by_class_kernel!(nlp.Class, J, nlp.meta.ncon, n, 3)
     return J
 end
 ```

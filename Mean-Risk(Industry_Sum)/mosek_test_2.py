@@ -38,7 +38,7 @@ def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_indust
         transaction_cost_term = transaction_cost * l1_norm
         
         # Modify objective to include transaction cost and risk-free rate
-        excess_return = x.T @ mu - risk_free_rate
+        excess_return = x.T @ (mu - risk_free_rate)
         M.objective('obj', ObjectiveSense.Maximize, excess_return - s * alpha - transaction_cost_term)
         
         # Add industry constraints

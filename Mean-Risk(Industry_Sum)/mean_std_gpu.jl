@@ -12,7 +12,7 @@ import PythonCall
 # 如果需要在全局进行CUDA标量操作（即给CUDA数组中的元素分别赋值【会影响性能】），下面一行代码就不要注释掉
 CUDA.allowscalar(true)
 
-T = Float64             # 目前可以设置为使用Float32或Float64两种精度，推荐使用Float64，因为Float32精度较低，可能会导致小幅计算误差
+T = Float32             # 目前可以设置为使用Float32或Float64两种精度，推荐使用Float64，因为Float32精度较低，可能会导致小幅计算误差
 VT = CUDA.CuVector{T}   # 使用T类型的向量类型CuVector
 MT = CUDA.CuMatrix{T}   # 使用T类型的矩阵类型CuMatrix
 MyInt = Int64           # 整数类型，用于表示股票的行业分类，一定要是Int64类型
@@ -50,7 +50,7 @@ end
 # 构造函数
 function PortfolioNLPModelCUDA_Construct(
     u::VT, 
-    r_f::T, 
+    r_f::T,           # 无风险利率
     cost::VT,        # 交易成本向量
     cls::VI,         # 每个资产所属的类别向量
     w0::VT,          # 优化前的权重向量
@@ -105,9 +105,9 @@ function NLPModels.obj(nlp::PortfolioNLPModelCUDA, x::AbstractVector{T}) where T
     nlp.counters.neval_obj += 1
     n = nlp.meta.nvar - 1   # 资产数量
     x_var = x[1:n]          # 前n个值为资产权重
-    t = x[end]              # 最后一个值为t，用于二阶锥约束，t >= sqrt(w'Σw)，
+    # t = x[end]              # 最后一个值为t，用于二阶锥约束，t >= sqrt(w'Σw)，
     # 计算目标函数值（取负号，因为默认是最小化）
-    return (-((CUDA.dot(nlp.µ, x_var)+ nlp.r_f) - CUDA.dot(CUDA.FastMath.abs_fast.(x_var - nlp.w0), nlp.Cost) - nlp.λ_risk * t))
+    return (-((CUDA.dot(nlp.µ, x_var)+ nlp.r_f) - CUDA.dot(CUDA.FastMath.abs_fast.(x_var - nlp.w0), nlp.Cost) - nlp.λ_risk * x[end]))
 end
 
 # 目标函数梯度（g为梯度向量）
@@ -154,9 +154,7 @@ function NLPModels.cons!(nlp::PortfolioNLPModelCUDA, x::AbstractVector{T}, c::Ab
     n = nlp.meta.nvar - 1
     x_var = x[1:n]
     t = x[end]
-
-    #CUDA.fill!(c, zero(T))
-    
+    # CUDA.fill!(c, zero(T))
     # 在 GPU 上计算
     CUDA.CUBLAS.mul!(nlp.V_Buffer, nlp.U, x_var)
     norm_Ux_sqr = norm_sqr(nlp.V_Buffer)
@@ -178,18 +176,17 @@ function MadNLP.jac_dense!(nlp::PortfolioNLPModelCUDA, x::AbstractVector{T}, J::
     nvar = nlp.meta.nvar
     n = nvar - 1
     x_var = x[1:n]
-    t = x[end]
+    #t = x[end]
     CUDA.fill!(J, zero(T))
 
     # 第一行对应二阶锥约束，对 x[i] 的偏导数为2*Σ*x[i]，对 t 的偏导数为-2*t
     CUDA.CUBLAS.mul!(nlp.V_Buffer, nlp.Σ, x_var)
     J[1, 1:n] = T(2).*nlp.V_Buffer'    
-    J[1, end] = T(-2)*t
+    J[1, end] = T(-2) * x[end]
 
     # 第二行对应资金总和约束，对 x[i] 的偏导数为1
     J[2, 1:n] .= one(T)
-    #J[2, end] = zero(T)
-
+    
     threads = 64           # 每个线程块的线程数
     blocks = ceil(Int, n / threads)  # 计算需要的线程块数
     CUDA.@cuda threads=threads blocks=blocks set_Jacobian_by_class_kernel!(nlp.Class, J, nlp.meta.ncon, n, 3)

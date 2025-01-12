@@ -10,7 +10,7 @@ from time import time
 #import cudf as pd
 
 # Julia代码路径，最好能给容器里的绝对路径
-JULIA_CODE_PATH = "/nvtest/GPU-Accelerated_Portfolio_Optimization_2/Mean-Risk(Industry_sum)/mean_std_gpu.jl"
+JULIA_CODE_PATH = "/nvtest/GPU-Accelerated_Portfolio_Optimization/Mean-Risk(Industry_sum)/mean_std_gpu.jl"
 # 检查Julia代码路径是否存在
 if not exists(JULIA_CODE_PATH):
     raise FileNotFoundError(f"Julia代码路径 {JULIA_CODE_PATH} 不存在")
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     W_max = 0.1                 # 权重上限
     Risk_min = 0.0              # 风险下限
     Risk_max = 1.0              # 风险上限
-    Risk_free = MyFloat(0.04)   # 无风险利率
+    Risk_Free_Rate = MyFloat(0.04)   # 无风险利率
     Industry_Weight_Max = 0.1    # 行业权重上限
     W_lb = cp.full(N_Var, W_min, dtype=T)        # 权重下限向量（添加对自变量的约束，可以改这里的数组元素）
     W_ub = cp.full(N_Var, W_max, dtype=T)        # 权重上限向量（添加对自变量的约束，可以改这里的数组元素）
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     Cls = cp.loadtxt('/nvtest/industry_labels.csv', dtype=cp.int64)
     print("开始构建非线性规划的NLPModel模型")
     # 构建NLPModel模型，这里我们直接使用CuPy数组为参数
-    julia_model = PortfolioNLPModelCUDA_Construct(Cov_Mat, Stocks_Mean_LR, Cost, Cls, W0, Lambda_risk, W_lb, W_ub, X0, N_con, Lcon, Ucon, Risk_free)
+    julia_model = PortfolioNLPModelCUDA_Construct(Cov_Mat, Stocks_Mean_LR, Cost, Cls, W0, Lambda_risk, W_lb, W_ub, X0, N_con, Lcon, Ucon, Risk_Free_Rate)
     print("NLPModel模型构建完成，开始调用MadNLP构建求解环境")
     # 创建MadNLP求解器
     julia_solver = jl.MadNLPGPU.MadNLPSolver(   julia_model,        # NLPModels的模型  

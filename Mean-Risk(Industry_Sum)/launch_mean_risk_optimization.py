@@ -133,7 +133,7 @@ if __name__ == "__main__":
     W_max = 0.1                 # 权重上限
     Risk_min = 0.0              # 风险下限
     Risk_max = 1.0              # 风险上限
-    Risk_free = 0.04            # 无风险利率
+    Risk_free = MyFloat(0.04)   # 无风险利率
     Industry_Weight_Max = 0.1    # 行业权重上限
     W_lb = cp.full(N_Var, W_min, dtype=T)        # 权重下限向量（添加对自变量的约束，可以改这里的数组元素）
     W_ub = cp.full(N_Var, W_max, dtype=T)        # 权重上限向量（添加对自变量的约束，可以改这里的数组元素）

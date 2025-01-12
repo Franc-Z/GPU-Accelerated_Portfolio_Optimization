@@ -7,7 +7,7 @@
 确保在容器中具有root权限，可以在使用`docker run`时加上`--user=root`选项。
 
 ```bash
-docker run -it --rm --gpus 1 --user=root -it your_image_name /bin/bash
+docker run -it --rm --gpus 1 --user=root your_image_name /bin/bash
 ```
 
 #### 2. 安装Julia （建议使用Julia-1.11.x版本）

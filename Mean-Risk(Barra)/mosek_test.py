@@ -5,11 +5,11 @@ import numpy as np
 import os
 import time
 
-def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_industry_weight, transaction_cost, risk_free_rate):
+def EfficientFrontier(n, mu, U, Expo_T, x0, w, lambda_risk, industry_labels, max_industry_weight, transaction_cost, risk_free_rate):
     with Model("Efficient frontier") as M:
         frontier = []
         # 例如，将线程数设置为 1
-        M.setSolverParam("numThreads", 10)
+        M.setSolverParam("numThreads", 1)
         # Defines the variables (holdings). Shortselling is not allowed.
         x = M.variable("x", n, Domain.inRange(0.0, 0.1))     # Portfolio variables
         s = M.variable("s", 1, Domain.greaterThan(0.0))     # Risk variable
@@ -18,7 +18,7 @@ def EfficientFrontier(n, mu, GT, x0, w, lambda_risk, industry_labels, max_indust
         M.constraint('budget', Expr.sum(x) == w+sum(x0))
 
         # Computes the risk
-        M.constraint('risk', Expr.vstack(s, Expr.mul(GT, x)), Domain.inQCone())
+        M.constraint('risk', Expr.vstack(s, Expr.mul(U, Expr.mul(Expo_T, x))), Domain.inQCone())
 
         # Define objective as a weighted combination of return and risk
         alpha = M.parameter()
@@ -82,12 +82,9 @@ if __name__ == '__main__':
     w = 0.0   #如果sum(x0)的初始值为1.0的话，w的初始值就应该为0.0
     
     x0 = np.full(n, 1.0/n, dtype=np.float64)
-    Q = expo @ (cov @ expo.T) 
-    Q = (Q + Q.T)*0.5 + np.eye(n)*1e-8
+    U = np.linalg.cholesky(cov).T
+    # Q = (Q + Q.T)*0.5 + np.eye(n)*1e-8
     
-    GT = np.linalg.cholesky(Q).T
-    print(GT.shape)
-
     # Example industry labels (replace with actual industry labels)
     #industry_labels = np.random.randint(1, 41, size=n,dtype=np.int32)
     #np.savetxt("/nvtest/industry_labels.csv", industry_labels, fmt='%d')
@@ -106,7 +103,7 @@ if __name__ == '__main__':
     alpha = 1.0
     with mosek.Env() as env:
         assert env.getversion() == (10, 2, 13)
-        frontier = EfficientFrontier(n, mu, GT, x0, w, alpha, industry_labels, max_industry_weight, transaction_cost, risk_free_rate)
+        frontier = EfficientFrontier(n, mu, U, expo.T, x0, w, alpha, industry_labels, max_industry_weight, transaction_cost, risk_free_rate)
         print("\n-----------------------------------------------------------------------------------")
         print('Efficient frontier')
         print("-----------------------------------------------------------------------------------\n")

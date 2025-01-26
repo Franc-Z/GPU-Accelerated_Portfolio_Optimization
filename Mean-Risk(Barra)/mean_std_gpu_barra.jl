@@ -80,24 +80,19 @@ function PortfolioNLPModelCUDA_Construct(
     cls_ = cls
     w0_ = w0
     cls_count_ = cls_count
-    Σ_ = CUDA.similar(x0_, size(cov))
-    copyto!(Σ_, cov)
+    Σ_ = cov 
     cholesky_result = CUDA.CUSOLVER.cholesky(CUDA.CUBLAS.Hermitian(Σ_)) # 在 GPU 上计算，确保矩阵是 Hermitian
     U_ = cholcopy(cholesky_result.U)  #U就是L'
-    #L_ = cholcopy(cholesky_result.L)
     lvar_ = lvar
     uvar_ = uvar
     lcon_ = lcon
     ucon_ = ucon
     V_Buffer_ = CUDA.similar(x0_, n_assets)
-    println("v_buffer size = ", size(expo, 2))
+    #println("v_buffer size = ", size(expo, 2))
     v_buffer_ = CUDA.similar(x0_, size(expo, 2))
-    expo_ = CUDA.similar(x0_, size(expo))
-    copyto!(expo_, expo)
-    expo_T_ = CUDA.similar(x0_, size(expo_T))
-    copyto!(expo_T_, expo_T)
-    Q_ = CUDA.similar(x0_, size(Q))
-    copyto!(Q_, Q)
+    expo_ = expo 
+    expo_T_ = expo_T            
+    Q_ = Q                      
     @assert isposdef(Q_) "Q必须是正定矩阵！"
     meta = NLPModelMeta(nvar,
                         ncon = n_con,   # 二阶锥约束和资金总和约束

@@ -125,7 +125,7 @@ if __name__ == "__main__":
     Stocks_Mean_LR = cp.nan_to_num(Stocks_Mean_LR)
     Cov_Mat = cp.loadtxt('/nvtest/GPU-Accelerated_Portfolio_Optimization/cov_41_41.csv', dtype=T, delimiter=",")                # 读取股票的协方差矩阵
     assert Cov_Mat.shape[0] == Cov_Mat.shape[1] == 41, "协方差矩阵必须是方阵"
-    Cov_Mat = cp.nan_to_num(Cov_Mat)*242
+    Cov_Mat = cp.nan_to_num(Cov_Mat)
     N_Assets = Stocks_Mean_LR.shape[0]              # 股票数量  
     jl.println("Julia后端调用正常！")               # 调用Julia的println函数，验证Julia环境是否正常
 

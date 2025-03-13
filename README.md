@@ -1,0 +1,2 @@
+请先参考How to setup Julia environment inside docker container.md文件构建Python及Julia运行的docker环境，
+之后，在容器中执行相关python和Julia脚本，进行CPU与GPU的benchmark。需要注意的是，Julia编译器具有先编译后执行的性质，因此，首次计时包含编译时间，应该重复运行，才能获得真实的benchmark计时数据。

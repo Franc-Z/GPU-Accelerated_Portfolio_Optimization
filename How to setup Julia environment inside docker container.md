@@ -76,7 +76,7 @@ versioninfo()
 安装所需的组件库：
 
 ```julia
-add LinearAlgebra PythonCall CUDA CUDSS SparseArrays JuMP
+add LinearAlgebra PythonCall CUDA CUDSS SparseArrays JuMP Random Printf
 dev https://github.com/cvxgrp/CuClarabel.git
 ```
 

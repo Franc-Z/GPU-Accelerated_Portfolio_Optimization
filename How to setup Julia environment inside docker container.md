@@ -76,20 +76,14 @@ versioninfo()
 安装所需的组件库：
 
 ```julia
-add NLPModels MadNLP MadNLPGPU LinearAlgebra PythonCall CUDA
+add LinearAlgebra PythonCall CUDA CUDSS SparseArrays JuMP
+dev https://github.com/cvxgrp/CuClarabel.git
 ```
 
 返回正常Julia命令行模式：
 
 ```julia
 按backspace键即可
-```
-
-如果您需要更新MadNLP.jl到最新版本（一般来说不需要像这样从GitHub来安装）：
-
-```julia
-using Pkg
-Pkg.add(url="https://github.com/MadNLP/MadNLP.jl.git",rev="master")
 ```
 
 退出Julia环境：

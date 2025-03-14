@@ -19,10 +19,10 @@ wget https://mirrors.tuna.tsinghua.edu.cn/julia-releases/bin/linux/x64/1.11/juli
 tar -zxvf julia-1.11-latest-linux-x86_64.tar.gz
 ```
 
-将解压后的文件夹移动到`/usr/local/`目录中（假设版本为`julia-1.11.2`）：
+将解压后的文件夹移动到`/usr/local/`目录中（假设版本为`julia-1.11.4`）：
 
 ```bash
-mv julia-1.11.2 /usr/local/
+mv julia-1.11.4 /usr/local/
 ```
 
 #### 3. 设置环境变量
@@ -36,13 +36,13 @@ vim ~/.bashrc
 在文件末尾添加以下行（请根据实际路径调整）：
 
 ```bash
-export PATH="$PATH:/usr/local/julia-1.11.2/bin"
+export PATH="$PATH:/usr/local/julia-1.11.4/bin"
 ```
 
 或者直接执行以下命令：
 
 ```bash
-echo "export PATH=\"$PATH:/usr/local/julia-1.11.2/bin\"" >> ~/.bashrc
+echo "export PATH=\"$PATH:/usr/local/julia-1.11.4/bin\"" >> ~/.bashrc
 ```
 
 使配置生效：

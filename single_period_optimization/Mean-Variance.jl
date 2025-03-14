@@ -48,7 +48,7 @@ function CreatePortfolioModel(n_assets::Int, n_style::Int, λ_risk::MyFloat,
     set_optimizer_attribute(model, "static_regularization_enable", true)
     set_optimizer_attribute(model, "dynamic_regularization_enable", true)
     set_optimizer_attribute(model, "equilibrate_enable", true)
-    set_optimizer_attribute(model, "iterative_refinement_enable", true)
+    set_optimizer_attribute(model, "iterative_refinement_enable", false)
     set_optimizer_attribute(model, "chordal_decomposition_enable", true)
 
     # 空初始化

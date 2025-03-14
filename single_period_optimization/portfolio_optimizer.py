@@ -58,7 +58,7 @@ def load_data():
     expo = np.nan_to_num(expo)
     bias = np.loadtxt('/nvtest/single_period_optimization/bias_4558.csv', dtype=MyFloat)
     bias = np.nan_to_num(bias)*12.0
-    return_ratio = np.loadtxt('/nvtest/single_period_optimization/stocks_return_original_2022.csv', dtype=MyFloat)
+    return_ratio = np.loadtxt('/nvtest/single_period_optimization/stock_return_2022.csv', dtype=MyFloat)
     cost = np.full_like(return_ratio, 0.002, dtype=MyFloat)
     return cov, expo, bias, return_ratio, cost
 
@@ -76,7 +76,7 @@ def generate_data(N = 50000, N_style = 41):
     
 def test_4558():
     cov, expo, bias, return_ratio, cost = load_data()
-    return_ratio_new = np.loadtxt("/nvtest/single_period_optimization/2023.csv", dtype=MyFloat)
+    return_ratio_new = np.loadtxt("/nvtest/single_period_optimization/stock_return_2023.csv", dtype=MyFloat)
     n_assets = len(return_ratio)
     n_style = expo.shape[1]
     x0 = np.full(n_assets, 1.0/n_assets, dtype=MyFloat)

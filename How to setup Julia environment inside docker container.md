@@ -37,12 +37,14 @@ vim ~/.bashrc
 
 ```bash
 export PATH="$PATH:/usr/local/julia-1.11.4/bin"
+export JULIA_NUM_THREADS=4
 ```
 
 或者直接执行以下命令：
 
 ```bash
 echo "export PATH=\"$PATH:/usr/local/julia-1.11.4/bin\"" >> ~/.bashrc
+echo "export JULIA_NUM_THREADS=4" >> ~/.bashrc
 ```
 
 使配置生效：

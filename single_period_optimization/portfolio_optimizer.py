@@ -1,22 +1,23 @@
 import numpy as np
 from time import time
-from juliacall import Main as jl
 from os import path, environ
-#import nvtx
-
 # 设置Julia环境变量
-environ['JULIA_NUM_THREADS'] = '1'
-environ['JULIA_OPTIMIZATION_LEVEL'] = '3'
-# environ['JULIA_COMPILE_MIN'] = '1'  # 最小编译 (可选)
+environ['PYTHON_JULIACALL_THREADS'] = '1'
+environ['PYTHON_JULIACALL_HANDLE_SIGNALS'] = 'yes'
+environ['PYTHON_JULIACALL_OPTIMIZE'] = '3'
+environ['PYTHON_JULIACALL_COMPILE'] = 'yes'  # 最小编译 (可选)
 # 其他可选的Julia性能设置
 environ['JULIA_CPU_TARGET'] = 'native'  # 为本地CPU架构优化
 #environ['JULIA_MAX_NUM_PRECOMPILE_FILES'] = '100'  # 增加预编译文件上限
 environ['JULIA_PKG_PRECOMPILE_AUTO'] = '1'  # 自动预编译
 
+from juliacall import Main as jl
+
 # 加载Julia脚本并获取模块
-julia_script_path = '/nvtest/single_period_optimization/Mean-Variance.jl'  
-# julia_script_path = '/nvtest/portfolio-optimization/src/julia/Mean-Risk.jl'
+julia_script_path = '/nvtest/GPU-Accelerated_Portfolio_Optimization/single_period_optimization/Mean-Variance.jl'  
+#julia_script_path = '/nvtest/GPU-Accelerated_Portfolio_Optimization/single_period_optimization/Mean-Risk.jl'
 assert path.exists(julia_script_path), f"Julia script not found: {julia_script_path}"
+
 jl.include(julia_script_path)
 
 if jl.MyFloat == jl.Float64:
@@ -52,13 +53,13 @@ class PortfolioOptimizer:
         
 
 def load_data():
-    cov = np.loadtxt('/nvtest/single_period_optimization/cov_41_41.csv', delimiter=',', dtype=MyFloat)
+    cov = np.loadtxt('/nvtest/GPU-Accelerated_Portfolio_Optimization/single_period_optimization/cov_41_41.csv', delimiter=',', dtype=MyFloat)
     cov *= 12.0
-    expo = np.loadtxt('/nvtest/single_period_optimization/expo_4558_41.csv', delimiter=',', dtype=MyFloat)
+    expo = np.loadtxt('/nvtest/GPU-Accelerated_Portfolio_Optimization/single_period_optimization/expo_4558_41.csv', delimiter=',', dtype=MyFloat)
     expo = np.nan_to_num(expo)
-    bias = np.loadtxt('/nvtest/single_period_optimization/bias_4558.csv', dtype=MyFloat)
+    bias = np.loadtxt('/nvtest/GPU-Accelerated_Portfolio_Optimization/single_period_optimization/bias_4558.csv', dtype=MyFloat)
     bias = np.nan_to_num(bias)*12.0
-    return_ratio = np.loadtxt('/nvtest/single_period_optimization/stock_return_2022.csv', dtype=MyFloat)
+    return_ratio = np.loadtxt('/nvtest/GPU-Accelerated_Portfolio_Optimization/single_period_optimization/stock_return_2023.csv', dtype=MyFloat)
     cost = np.full_like(return_ratio, 0.002, dtype=MyFloat)
     return cov, expo, bias, return_ratio, cost
 
@@ -76,7 +77,7 @@ def generate_data(N = 50000, N_style = 41):
     
 def test_4558():
     cov, expo, bias, return_ratio, cost = load_data()
-    return_ratio_new = np.loadtxt("/nvtest/single_period_optimization/stock_return_2023.csv", dtype=MyFloat)
+    return_ratio_new = np.loadtxt("/nvtest/GPU-Accelerated_Portfolio_Optimization/single_period_optimization/stock_return_2023.csv", dtype=MyFloat)
     n_assets = len(return_ratio)
     n_style = expo.shape[1]
     x0 = np.full(n_assets, 1.0/n_assets, dtype=MyFloat)
@@ -87,7 +88,7 @@ def test_4558():
     print(f'objective = {jl.JuMP.objective_value(optimizer.pm.model)}')
     start = time()
     #with nvtx.annotate(message="my_loop", color="green"):
-    for i in range(1,10):        
+    for i in range(1,2):        
         optimizer.resolve(return_ratio_new)
     print(f'each optimizing time: {(time()-start)/i}')
     print(f"risk = {jl.get_risk(optimizer.pm)}")

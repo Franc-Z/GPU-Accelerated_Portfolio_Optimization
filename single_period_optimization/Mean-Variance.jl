@@ -1,7 +1,6 @@
-using LinearAlgebra, JuMP, Clarabel, PythonCall, NVTX
+using LinearAlgebra, JuMP, Clarabel, PythonCall
 import CUDA
 import PythonCall: pyconvert
-
 Clarabel.CUDA.allowscalar(true)
 
 MyFloat = Float64
@@ -20,7 +19,7 @@ mutable struct PortfolioModel
     #v_buffer::Vector{MyFloat}
     model::JuMP.Model
     x::Vector{JuMP.VariableRef}
-    t::Union{JuMP.VariableRef, Nothing}
+    #t::Union{JuMP.VariableRef, Nothing}
     y::Vector{JuMP.VariableRef}
     con_1::Vector{JuMP.ConstraintRef}
     con_2::Vector{JuMP.ConstraintRef}
@@ -44,17 +43,12 @@ function CreatePortfolioModel(n_assets::Int, n_style::Int, λ_risk::MyFloat,
     set_optimizer_attribute(model, "direct_solve_method", :cudss)       # :cudssmixed or :cudss
     set_optimizer_attribute(model, "verbose", true)
     set_optimizer_attribute(model, "presolve_enable", false)
-    set_optimizer_attribute(model, "static_regularization_enable", true)
-    set_optimizer_attribute(model, "dynamic_regularization_enable", true)
-    set_optimizer_attribute(model, "equilibrate_enable", true)
     set_optimizer_attribute(model, "iterative_refinement_enable", false)
-    set_optimizer_attribute(model, "chordal_decomposition_enable", true)
-
     # 空初始化
     var_vector_empty = Vector{JuMP.VariableRef}()
     con_empty = Vector{JuMP.ConstraintRef}()
     
-    return PortfolioModel(n_assets, n_style, λ_risk, x0, zeros(MyFloat, n_style), cov, expo', bias, cost, return_ratio, model, var_vector_empty, nothing, var_vector_empty, con_empty, con_empty)
+    return PortfolioModel(n_assets, n_style, λ_risk, x0, zeros(MyFloat, n_style), cov, expo', bias, cost, return_ratio, model, var_vector_empty, var_vector_empty, con_empty, con_empty)
 end
 
 function setup_model!(pm::PortfolioModel)
@@ -66,7 +60,7 @@ function setup_model!(pm::PortfolioModel)
     # 更新引用
     pm.x = x
     pm.y = y
-    pm.t = t
+    #pm.t = t
     
     # 模型约束
     @constraint(pm.model, y .== pm.expo_T * x)
@@ -85,13 +79,12 @@ function setup_model!(pm::PortfolioModel)
     
     @constraint(pm.model, x_buy_sell .>= 0.0)
     pm.con_1 = @constraint(pm.model, x_buy_sell .>= x - pm.x0)
-    pm.con_2 = @constraint(pm.model, x_buy_sell .>= pm.x0 - x)
-    @constraint(pm.model, dot(y, pm.cov*y) + dot(x, pm.bias.*x) <= t)
-    @objective(pm.model, Min, t + dot(pm.cost, x_buy_sell) - (1 / pm.λ_risk) * dot(pm.return_ratio, x))
+    pm.con_2 = @constraint(pm.model, x_buy_sell .>= pm.x0 - x)       
+    @objective(pm.model, Min, dot(y, pm.cov*y) + dot(x, pm.bias.*x) + (1 / pm.λ_risk) * (dot(pm.cost, x_buy_sell) - dot(pm.return_ratio, x)))
 end
 
 function initial_solve!(pm::PortfolioModel)
-    optimize!(pm.model)  
+    CUDA.@time optimize!(pm.model)  
 end
 
 function update_return_ratio!(pm::PortfolioModel, py_u_cpu::PyVector{MyFloat})
@@ -103,29 +96,22 @@ function resolve!(pm::PortfolioModel)
     begin
         copyto!(pm.x0, value.(pm.x)) 
         copyto!(pm.y0, value.(pm.y))
-        t_value::MyFloat = value(pm.t)
+        #t_value::MyFloat = value(pm.t)
         set_normalized_rhs.(pm.con_1, -pm.x0)
         set_normalized_rhs.(pm.con_2, pm.x0)
-        pm.return_ratio .*= - (1 / pm.λ_risk) 
-        set_objective_coefficient.(pm.model, pm.x, pm.return_ratio)
+        
+        # 修改这一行，不再使用累积乘法，而是直接设置目标系数
+        # pm.return_ratio .*= - (1 / pm.λ_risk)  # 移除这行，防止累积修改
+        set_objective_coefficient.(pm.model, pm.x, pm.return_ratio .* (- (1 / pm.λ_risk)))
 
         set_start_value.(pm.x, pm.x0)
         set_start_value.(pm.y, pm.y0)
-        set_start_value(pm.t, t_value)
+        #set_start_value(pm.t, t_value)
     end
     
-    NVTX.@range "my_kernel" begin
-        optimize!(pm.model)
-    end
-          
-    if is_solved_and_feasible(pm.model)
-        println("已正确求解！")
-    else
-        println("求解失败！")
-    end  
+    optimize!(pm.model)
 end
 
 function get_risk(pm::PortfolioModel)
-    CUDA.@allowscalar return value(pm.t)
+    return value(dot(pm.y, pm.cov*pm.y) + dot(pm.x, pm.bias.*pm.x))
 end
-

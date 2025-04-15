@@ -42,8 +42,13 @@ function CreatePortfolioModel(n_assets::Int, n_style::Int, λ_risk::MyFloat,
     model = Model(Clarabel.Optimizer)
     set_optimizer_attribute(model, "direct_solve_method", :cudss)       # :cudssmixed or :cudss
     set_optimizer_attribute(model, "verbose", true)
-    set_optimizer_attribute(model, "presolve_enable", false)
     set_optimizer_attribute(model, "iterative_refinement_enable", false)
+    set_optimizer_attribute(model, "iterative_refinement_max_iter", 1)
+    set_optimizer_attribute(model, "presolve_enable", true)
+    set_optimizer_attribute(model, "static_regularization_enable", true)
+    set_optimizer_attribute(model, "dynamic_regularization_enable", true)
+    set_optimizer_attribute(model, "chordal_decomposition_enable", true)
+    set_optimizer_attribute(model, "equilibrate_max_iter", 1)
     # 空初始化
     var_vector_empty = Vector{JuMP.VariableRef}()
     con_empty = Vector{JuMP.ConstraintRef}()

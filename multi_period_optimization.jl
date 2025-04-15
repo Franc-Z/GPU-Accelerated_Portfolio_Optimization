@@ -50,6 +50,12 @@ model = JuMP.Model(Clarabel.Optimizer)
 # Configure solver parameters for GPU acceleration
 set_optimizer_attribute(model, "direct_solve_method", :cudss)
 set_optimizer_attribute(model, "iterative_refinement_enable", false)
+set_optimizer_attribute(model, "iterative_refinement_max_iter", 1)
+set_optimizer_attribute(model, "presolve_enable", true)
+set_optimizer_attribute(model, "static_regularization_enable", true)
+set_optimizer_attribute(model, "dynamic_regularization_enable", true)
+set_optimizer_attribute(model, "chordal_decomposition_enable", true)
+set_optimizer_attribute(model, "equilibrate_max_iter", 1)
 
 # Define decision variables
 @variables(model, begin

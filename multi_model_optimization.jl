@@ -51,7 +51,12 @@ x0 = zeros(n)
     # Configure solver parameters for GPU acceleration
     set_optimizer_attribute(model, "direct_solve_method", :cudss)
     set_optimizer_attribute(model, "iterative_refinement_enable", false)
-    set_optimizer_attribute(model, "presolve_enable", false)
+    set_optimizer_attribute(model, "iterative_refinement_max_iter", 1)
+    set_optimizer_attribute(model, "presolve_enable", true)
+    set_optimizer_attribute(model, "static_regularization_enable", true)
+    set_optimizer_attribute(model, "dynamic_regularization_enable", true)
+    set_optimizer_attribute(model, "chordal_decomposition_enable", true)
+    set_optimizer_attribute(model, "equilibrate_max_iter", 1)
     # Define decision variables
     @variables(model, begin
         0.1 >= x[1:T, 1:n] >= 0.0  # Portfolio weights for each asset at each time period, bounded by 0 and 0.1

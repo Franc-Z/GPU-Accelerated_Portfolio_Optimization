@@ -79,7 +79,7 @@ versioninfo()
 
 ```julia
 add LinearAlgebra PythonCall CUDA CUDSS SparseArrays JuMP Random Printf
-dev https://github.com/cvxgrp/CuClarabel.git
+add https://github.com/cvxgrp/CuClarabel/tree/450e0ed42b8f38df94b47c2c7df6b4e8c7f82d46
 ```
 
 返回正常Julia命令行模式：

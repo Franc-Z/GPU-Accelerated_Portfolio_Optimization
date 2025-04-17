@@ -99,8 +99,8 @@ x0 = zeros(n)
     @objective(model, Min, sum(
         dot(x[t,:], D .* x[t, :]) + 
         dot(y[t,:], Ω * y[t, :]) -
-        (1 / γ) * (mu_matrix[:, t]' * x[t, :]) +
-        transaction_cost_rate * sum(z[t, :]) for t in 1:T)
+        (1 / γ) * (dot(mu_matrix[:, t], x[t, :]) +
+        transaction_cost_rate * sum(z[t, :])) for t in 1:T)
     )
     # Solve the optimization problem
     optimize!(model)

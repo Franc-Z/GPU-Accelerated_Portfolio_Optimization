@@ -7,7 +7,7 @@ rng = Random.MersenneTwister(1)
 # Model dimensions
 k = 50 # Number of risk factors
 n = k * 100 # Number of assets (same as the original single-period model)
-T = 10 # Number of time periods in the multi-period optimization
+T = 1 # Number of time periods in the multi-period optimization
 
 # Generate asset-specific risk vector (idiosyncratic risks)
 # Each element represents the specific risk for each asset, scaled by sqrt(k)
@@ -45,73 +45,95 @@ d = 1.0
 x0 = zeros(n)
 
 # Initialize optimization model using Clarabel solver
-model = JuMP.Model(Clarabel.Optimizer)
+CUDA.@time begin
+    
+    model = JuMP.Model(Clarabel.Optimizer)
 
-# Configure solver parameters for GPU acceleration
-set_optimizer_attribute(model, "direct_solve_method", :cudss)
-set_optimizer_attribute(model, "iterative_refinement_enable", false)
-set_optimizer_attribute(model, "iterative_refinement_max_iter", 1)
-set_optimizer_attribute(model, "presolve_enable", true)
-set_optimizer_attribute(model, "static_regularization_enable", true)
-set_optimizer_attribute(model, "dynamic_regularization_enable", true)
-set_optimizer_attribute(model, "chordal_decomposition_enable", true)
-set_optimizer_attribute(model, "equilibrate_max_iter", 1)
+    # Configure solver parameters for GPU acceleration
+    set_optimizer_attribute(model, "direct_solve_method", :cudss)
+    set_optimizer_attribute(model, "iterative_refinement_enable", false)
+    set_optimizer_attribute(model, "iterative_refinement_max_iter", 1)
+    set_optimizer_attribute(model, "iterative_refinement_reltol", 1e-8)
+    set_optimizer_attribute(model, "iterative_refinement_abstol", 1e-8)
+    set_optimizer_attribute(model, "presolve_enable", true)
+    set_optimizer_attribute(model, "static_regularization_enable", true)
+    set_optimizer_attribute(model, "dynamic_regularization_enable", true)
+    set_optimizer_attribute(model, "chordal_decomposition_enable", true)
+    set_optimizer_attribute(model, "equilibrate_max_iter", 1)
+    # Define decision variables
+    @variables(model, begin
+        0.1 >= x[1:T, 1:n] >= 0.0  # Portfolio weights for each asset at each time period, bounded by 0 and 0.1
+        0.1 >= y[1:T, 1:k] >= 0.0  # Factor exposures at each time period
+    end)
+    #=
+    # Set initial values for x to be proportional to positive values in mu_matrix and sum to 1.0
+    for t in 1:T
+        # Get positive returns for current period
+        positive_returns = max.(mu_matrix[:, t], 0.0)
+        
+        # If there are positive returns, normalize them to sum to 1.0
+        if sum(positive_returns) > 0
+            initial_weights = positive_returns ./ sum(positive_returns)
+        else
+            # If no positive returns, use uniform weights
+            initial_weights = fill(1.0/n, n)
+        end
+        
+        # Set initial values for x variables
+        for i in 1:n
+            set_start_value(x[t, i], min(initial_weights[i], 0.1))
+        end
+    end
+    =#
+    # Define transaction volume variables for implementing trading costs
+    @variable(model, z[1:T, 1:n] >= 0)  # Transaction volume variables (absolute changes in weights)
 
-# Define decision variables
-@variables(model, begin
-    0.1 >= x[1:T, 1:n] >= 0.0  # Portfolio weights for each asset at each time period, bounded by 0 and 0.1
-    0.1 >= y[1:T, 1:k] >= 0.0  # Factor exposures at each time period
-end)
+    # Transaction volume constraints for the first period (comparing with initial holdings)
+    @constraint(model, z[1, :] .>= x[1, :] .- x0)     # Buying constraint
+    @constraint(model, z[1, :] .>= x0 .- x[1, :])     # Selling constraint
 
-# Define transaction volume variables for implementing trading costs
-@variable(model, z[1:T, 1:n] >= 0)  # Transaction volume variables (absolute changes in weights)
+    # Transaction volume constraints for subsequent periods
+    for t in 2:T
+        @constraint(model, z[t, :] .>= x[t, :] .- x[t-1, :])     # Buying constraint
+        @constraint(model, z[t, :] .>= x[t-1, :] .- x[t, :])     # Selling constraint
+    end
 
-# Transaction volume constraints for the first period (comparing with initial holdings)
-@constraint(model, z[1, :] .>= x[1, :] .- x0)     # Buying constraint
-@constraint(model, z[1, :] .>= x0 .- x[1, :])     # Selling constraint
+    # Transaction cost rate - applied linearly to the transaction volume
+    transaction_cost_rate = 0.002  # Can be adjusted based on market conditions
 
-# Transaction volume constraints for subsequent periods
-for t in 2:T
-    @constraint(model, z[t, :] .>= x[t, :] .- x[t-1, :])     # Buying constraint
-    @constraint(model, z[t, :] .>= x[t-1, :] .- x[t, :])     # Selling constraint
+    # Budget constraint for the first period
+    # Sum of weights equals target investment amount plus initial holdings
+    @constraint(model, sum(x[1, :]) == d + sum(x0))
+
+    # Budget constraints for subsequent periods
+    # Maintain constant investment amount across periods
+    for t in 2:T
+        @constraint(model, sum(x[t, :]) == sum(x[t-1, :]))
+    end
+
+    # Factor exposure constraints - link portfolio weights to factor exposures
+    for t in 1:T
+        @constraint(model, y[t, :] .== F_T * x[t, :])
+    end
+
+    # Objective function: minimize the weighted sum of:
+    # 1. Asset-specific risk (x[t]' * D * x[t])
+    # 2. Factor risk (y[t]' * Ω * y[t])
+    # 3. Negative expected return scaled by risk aversion (-1/γ * mu_matrix[:, t]' * x[t, :])
+    # 4. Transaction costs (transaction_cost_rate * sum(z[t, :]))
+    # Summed across all time periods
+    @objective(model, Min, sum(dot(x[t,:], D .* x[t, :]) + 
+                            dot(y[t,:], Ω * y[t, :]) -
+                            (1 / γ) * (dot(mu_matrix[:, t], x[t, :]) +
+                            transaction_cost_rate * sum(z[t, :]))
+                            for t in 1:T)
+    )
+    optimize!(model)
 end
-
-# Transaction cost rate - applied linearly to the transaction volume
-transaction_cost_rate = 0.002  # Can be adjusted based on market conditions
-
-# Budget constraint for the first period
-# Sum of weights equals target investment amount plus initial holdings
-@constraint(model, sum(x[1, :]) == d + sum(x0))
-
-# Budget constraints for subsequent periods
-# Maintain constant investment amount across periods
-for t in 2:T
-    @constraint(model, sum(x[t, :]) == sum(x[t-1, :]))
-end
-
-# Factor exposure constraints - link portfolio weights to factor exposures
-for t in 1:T
-    @constraint(model, y[t, :] .== F_T * x[t, :])
-end
-
-# Objective function: minimize the weighted sum of:
-# 1. Asset-specific risk (x[t]' * D * x[t])
-# 2. Factor risk (y[t]' * Ω * y[t])
-# 3. Negative expected return scaled by risk aversion (-1/γ * mu_matrix[:, t]' * x[t, :])
-# 4. Transaction costs (transaction_cost_rate * sum(z[t, :]))
-# Summed across all time periods
-@objective(model, Min, sum(dot(x[t,:], D .* x[t, :]) + 
-                          dot(y[t,:], Ω * y[t, :]) -
-                          (1 / γ) * (mu_matrix[:, t]' * x[t, :]) +
-                          transaction_cost_rate * sum(z[t, :])
-                          for t in 1:T)
-)
-
 # Allow scalar operations in CUDA environment and solve the model
 CUDA.@allowscalar begin    
     # Solve the optimization problem
-    optimize!(model)
-    
+        
     # Extract optimal solutions
     x_opt = value.(x)    # Optimal portfolio weights
     y_opt = value.(y)    # Optimal factor exposures
@@ -122,7 +144,7 @@ CUDA.@allowscalar begin
     # Print results
     println("Optimal Objective Value = ", objective_value(model))
     println("\nFactor Covariance Matrix Ω:")
-    display(Ω)
+    #display(Ω)
     println("\nAsset Allocation Results by Period:")
     
     # Display allocation results for each period

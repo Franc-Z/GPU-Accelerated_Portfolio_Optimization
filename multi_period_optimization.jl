@@ -7,7 +7,7 @@ rng = Random.MersenneTwister(1)
 # Model dimensions
 k = 50 # Number of risk factors
 n = k * 100 # Number of assets (same as the original single-period model)
-T = 1 # Number of time periods in the multi-period optimization
+T = 2 # Number of time periods in the multi-period optimization
 
 # Generate asset-specific risk vector (idiosyncratic risks)
 # Each element represents the specific risk for each asset, scaled by sqrt(k)

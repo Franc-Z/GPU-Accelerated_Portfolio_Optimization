@@ -1,4 +1,3 @@
-```markdown
 # Docker 环境构建与 CPU/GPU Benchmark 测试指南
 
 请先参考 `How to setup Julia environment inside docker container.md` 文件，构建包含 Python 及 Julia 运行环境的 Docker 容器。

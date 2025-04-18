@@ -1,7 +1,3 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" class="logo" width="120"/>
-
-# 请把以下文本美化为相应markdown文档：
-
 请先参考How to setup Julia environment inside docker container.md文件构建Python及Julia运行的docker环境，
 之后，在容器中执行相关python和Julia脚本，进行CPU与GPU的benchmark。
 multi_period_optimization.jl是跑1到多周期任务的Julia脚本；multi_model_optimization.jl是把多个独立问题放到一起求解，从而提升GPU利用率的julia脚本；multi_period_optimization_by_mosek.py是与multi_period_optimization.jl对应的Mosek测速的python脚本。

@@ -3,7 +3,7 @@ import CUDA
 import PythonCall: pyconvert
 
 CUDA.allowscalar(true)
-
+MyFloat = Float64
 mutable struct PortfolioModel
     n_assets::Int
     n_style::Int

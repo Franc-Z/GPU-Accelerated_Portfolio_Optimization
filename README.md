@@ -1,11 +1,3 @@
-请先参考How to setup Julia environment inside docker container.md文件构建Python及Julia运行的docker环境，
-之后，在容器中执行相关python和Julia脚本，进行CPU与GPU的benchmark。
-multi_period_optimization.jl是跑1到多周期任务的Julia脚本；multi_model_optimization.jl是把多个独立问题放到一起求解，从而提升GPU利用率的julia脚本；multi_period_optimization_by_mosek.py是与multi_period_optimization.jl对应的Mosek测速的python脚本。
-如何运行Julia脚本：
-（1）在命令行执行julia命令
-（2）在julia REPL命令行内输入include("multi_period_optimization.jl")后按回车
-（3）需要注意的是，Julia编译器具有先编译后执行的性质，因此，首次计时包含编译时间，应该重复运行（再次输入include("multi_period_optimization.jl")后按回车），才能获得真实的benchmark计时数据。
-
 ```markdown
 # Docker 环境构建与 CPU/GPU Benchmark 测试指南
 
@@ -27,7 +19,7 @@ multi_period_optimization.jl是跑1到多周期任务的Julia脚本；multi_mode
 
 1. 在命令行中执行 `julia` 命令，进入 Julia REPL 环境。
 2. 在 Julia REPL 中输入以下命令并回车执行：
-```
+```bash
 
 include("multi_period_optimization.jl")
 

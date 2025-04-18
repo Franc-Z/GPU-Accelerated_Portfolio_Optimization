@@ -1,7 +1,7 @@
 using LinearAlgebra, JuMP, Clarabel, PythonCall
 import CUDA
 import PythonCall: pyconvert
-Clarabel.CUDA.allowscalar(true)
+CUDA.allowscalar(true)
 
 MyFloat = Float64
 

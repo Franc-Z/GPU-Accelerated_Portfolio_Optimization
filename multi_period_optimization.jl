@@ -34,8 +34,8 @@ F_T = sprandn(rng, k, n, 0.5)
 # Generate expected returns for each asset across all time periods
 mu_matrix = Matrix{Float64}(undef, n, T)
 for t in 1:T
-    # Random returns for each period, approximately in range [3%, 12%]
-    mu_matrix[:, t] = (3 .+ 9 .* rand(rng, n)) ./ 100
+    # Random returns for each period, approximately in range [-3%, 12%]
+    mu_matrix[:, t] = (-3 .+ 15 .* rand(rng, n)) ./ 100
 end
 
 # Target investment amount (same as in single-period model)

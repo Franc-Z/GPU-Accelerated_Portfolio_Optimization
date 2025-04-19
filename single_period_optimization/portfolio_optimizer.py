@@ -87,7 +87,7 @@ def test_4558():
     print(f'objective = {jl.JuMP.objective_value(optimizer.pm.model)}')
     start = time()
     #with nvtx.annotate(message="my_loop", color="green"):
-    for i in range(1,2):        
+    for i in range(1,20):        
         optimizer.resolve(return_ratio_new)
     print(f'each optimizing time: {(time()-start)/i}')
     print(f"risk = {jl.get_risk(optimizer.pm)}")

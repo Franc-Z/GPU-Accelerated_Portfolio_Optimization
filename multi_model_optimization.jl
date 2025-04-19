@@ -59,8 +59,8 @@ x0 = zeros(n)
     set_optimizer_attribute(model, "equilibrate_max_iter", 1)
     # Define decision variables
     @variables(model, begin
-        0.1 >= x[1:T, 1:n] >= 0.0  # Portfolio weights for each asset at each time period, bounded by 0 and 0.1
-        0.1 >= y[1:T, 1:k] >= 0.0  # Factor exposures at each time period
+        0.1 .>= x[1:T, 1:n] .>= 0.0  # Portfolio weights for each asset at each time period, bounded by 0 and 0.1
+        0.1 .>= y[1:T, 1:k] .>= 0.0  # Factor exposures at each time period
     end)
 
     # Define transaction volume variables for implementing trading costs

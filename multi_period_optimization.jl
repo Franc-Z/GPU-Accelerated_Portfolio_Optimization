@@ -99,9 +99,8 @@ CUDA.@allowscalar begin
     x_opt = value.(x)
     y_opt = value.(y)
     z_opt = value.(z)
-    
-    # 使用矩阵运算计算预期收益(避免循环)
-    expected_returns = [dot(mu_matrix[:,t], x_opt[t,:]) for t in 1:T]
+    expected_returns = value.(expected_returns)
+    transaction_costs = value.(transaction_costs)
     
     # 打印结果
     println("最优目标函数值 = ", objective_value(model))
@@ -109,13 +108,9 @@ CUDA.@allowscalar begin
     # 按时间段显示资产配置结果
     println("\n按时间段的资产配置结果:")
     for t in 1:T
-        # 使用高效的向量求和
-        total_transaction = sum(z_opt[t,:])
-        
         println("\n时间段 $t:")
         println("预期收益 = ", expected_returns[t])
-        println("总交易量 = ", total_transaction)
-        println("交易成本 = ", transaction_cost_rate * total_transaction)
+        println("交易成本 = ", transaction_costs[t])
         
         println("前10个最大权重及其指数:")
         # 使用高效部分排序而非完全排序

@@ -41,7 +41,7 @@ CUDA.@time begin
     set_optimizer_attribute(model, "static_regularization_enable", true)
     set_optimizer_attribute(model, "dynamic_regularization_enable", true)
     set_optimizer_attribute(model, "chordal_decomposition_enable", true)
-    set_optimizer_attribute(model, "equilibrate_max_iter", 10)  # 增加平衡迭代次数
+    set_optimizer_attribute(model, "equilibrate_max_iter", 1)  # 增加平衡迭代次数
     
     # 使用单一@variables块定义所有变量以减少JuMP内部开销
     @variables(model, begin

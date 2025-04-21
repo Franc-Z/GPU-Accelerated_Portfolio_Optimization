@@ -4,158 +4,144 @@ using LinearAlgebra, SparseArrays, Random, Clarabel, JuMP, CUDA, Printf
 # Set random seed for reproducibility
 rng = Random.MersenneTwister(1)
 
-# Model dimensions
-k = 50 # Number of risk factors
-n = k * 100 # Number of assets (same as the original single-period model)
-T = 2 # Number of time periods in the multi-period optimization
+# 参数设置 - 匹配Python代码
+k = 50                    # 风险因子数量
+n = k * 100               # 资产数量
+T = 2                     # 时间周期数
+γ = 1.0                   # 风险厌恶系数
+d = 1.0                   # 初始投资金额
+x0 = zeros(n)             # 初始持仓权重
 
-# Generate asset-specific risk vector (idiosyncratic risks)
-# Each element represents the specific risk for each asset, scaled by sqrt(k)
-D = rand(rng, n) .* sqrt(k)
+# 生成资产特定风险向量(使用稀疏对角矩阵提高效率)
+D_diag = rand(rng, n) .* sqrt(k)
+D_sqrt = sqrt.(D_diag)
 
-# Generate factor loading matrix (sparse) - maps risk factors to assets
-# sprandn creates a sparse matrix with approximately 50% non-zero elements
-F_T = sprandn(rng, k, n, 0.5)
+# 生成稀疏因子载荷矩阵(使用稀疏表示提高计算和内存效率)
+F = randn(rng, n, k) .* (rand(rng, n, k) .< 0.5)
 
-# Risk aversion parameter (trade-off between risk and return)
-γ = 1.0
+# 优化的因子协方差矩阵生成
+Ω_temp = randn(k, k)
+Ω = (Ω_temp * Ω_temp') / k
+#Ω_chol = cholesky(Symmetric(Ω)).L  # 使用Symmetric确保数值稳定性
 
-# Generate factor covariance matrix Ω (symmetric positive definite)
-# First create a random matrix, then convert it to a symmetric positive definite matrix
-Ω_temp = randn(rng, k, k)
-Ω = Ω_temp * Ω_temp' / k  # Ensure eigenvalues are of moderate size
+# 预先计算并存储预期收益矩阵
+mu_matrix = (3.0 .+ 9.0 .* rand(rng, n, T)) ./ 100.0
 
-# Alternative approach to generate a simpler diagonal factor covariance matrix:
-# Ω = Diagonal(rand(rng, k) .* 0.5 .+ 0.5) # Diagonal elements in range [0.5, 1.0]
+# 交易成本率参数
+transaction_cost_rate = 0.002
 
-# Cholesky decomposition of the factor covariance matrix for optimized quadratic form calculations
-Ω_chol = cholesky(Ω).L
-
-# Generate expected returns for each asset across all time periods
-mu_matrix = Matrix{Float64}(undef, n, T)
-for t in 1:T
-    # Random returns for each period, approximately in range [-3%, 12%]
-    mu_matrix[:, t] = (-3 .+ 15 .* rand(rng, n)) ./ 100
-end
-
-# Target investment amount (same as in single-period model)
-d = 1.0 
-
-# Initial portfolio holdings (assumed to be zero)
-x0 = zeros(n)
-
-# Initialize optimization model using Clarabel solver
+# 初始化优化模型，使用Clarabel求解器
 CUDA.@time begin
-    
     model = JuMP.Model(Clarabel.Optimizer)
-
-    # Configure solver parameters for GPU acceleration
+    
+    # 调整求解器参数以平衡求解精度和速度
     set_optimizer_attribute(model, "direct_solve_method", :cudss)
     set_optimizer_attribute(model, "iterative_refinement_enable", false)
-    set_optimizer_attribute(model, "iterative_refinement_max_iter", 1)
-    set_optimizer_attribute(model, "iterative_refinement_reltol", 1e-8)
-    set_optimizer_attribute(model, "iterative_refinement_abstol", 1e-8)
     set_optimizer_attribute(model, "presolve_enable", true)
     set_optimizer_attribute(model, "static_regularization_enable", true)
     set_optimizer_attribute(model, "dynamic_regularization_enable", true)
     set_optimizer_attribute(model, "chordal_decomposition_enable", true)
-    set_optimizer_attribute(model, "equilibrate_max_iter", 1)
-    # Define decision variables
+    set_optimizer_attribute(model, "equilibrate_max_iter", 10)  # 增加平衡迭代次数
+    
+    # 使用单一@variables块定义所有变量以减少JuMP内部开销
     @variables(model, begin
-        0.1 .>= x[1:T, 1:n] .>= 0.0  # Portfolio weights for each asset at each time period, bounded by 0 and 0.1
-        0.1 .>= y[1:T, 1:k] .>= 0.0  # Factor exposures at each time period
+        0.1 >= x[1:T, 1:n] >= 0.0     # 添加上限约束提高求解效率
+        0.1 >= y[1:T, 1:k] >= 0.0                  # 因子暴露
+        z[1:T, 1:n] >= 0.0            # 交易量变量      
     end)
-    #=
-    # Set initial values for x to be proportional to positive values in mu_matrix and sum to 1.0
+    
+    # 批量添加交易量约束(第一个时间段)
+    @constraints(model, begin
+        [i=1:n], z[1,i] >= x[1,i] - x0[i]
+        [i=1:n], z[1,i] >= x0[i] - x[1,i]
+    end)
+    
+    # 批量添加后续时间段的交易量约束
+    for t in 2:T
+        @constraints(model, begin
+            [i=1:n], z[t,i] >= x[t,i] - x[t-1,i]
+            [i=1:n], z[t,i] >= x[t-1,i] - x[t,i]
+        end)
+    end
+    
+    # 批量添加预算约束
+    @constraint(model, sum(x[1,:]) == d + sum(x0))
+    @constraint(model, [t=2:T], sum(x[t,:]) == sum(x[t-1,:]))
+    
+    # 使用矩阵向量乘法形式添加因子暴露约束(避免双循环)
     for t in 1:T
-        # Get positive returns for current period
-        positive_returns = max.(mu_matrix[:, t], 0.0)
+        # 使用列向量表达式一次性添加所有约束
+        F_t = F'  # 预计算转置矩阵
+        @constraint(model, y[t,:] .== F_t * x[t,:])
+    end
+    
+    # 使用二阶锥约束处理资产特定风险和因子风险
+    #=
+    for t in 1:T
+        # 使用更紧凑的表达式
+        @constraint(model, [i=1:n], [x[t,i]; D_sqrt[i]*x[t,i]] in RotatedSecondOrderCone())
         
-        # If there are positive returns, normalize them to sum to 1.0
-        if sum(positive_returns) > 0
-            initial_weights = positive_returns ./ sum(positive_returns)
-        else
-            # If no positive returns, use uniform weights
-            initial_weights = fill(1.0/n, n)
-        end
+        # 针对每个因子添加一行约束
         
-        # Set initial values for x variables
-        for i in 1:n
-            set_start_value(x[t, i], min(initial_weights[i], 0.1))
-        end
+        # 仅使用下三角矩阵的有效元素
+        @constraint(model, [j=1:k],p[t,j] == sum(Ω_chol[j,j2] * y[t,j2] for j2 in 1:j))
+        
+        
+        @constraint(model, [j=1:k], [y[t,j]; p[t,j]] in RotatedSecondOrderCone())
     end
     =#
-    # Define transaction volume variables for implementing trading costs
-    @variable(model, z[1:T, 1:n] >= 0)  # Transaction volume variables (absolute changes in weights)
-
-    # Transaction volume constraints for the first period (comparing with initial holdings)
-    @constraint(model, z[1, :] .>= x[1, :] .- x0)     # Buying constraint
-    @constraint(model, z[1, :] .>= x0 .- x[1, :])     # Selling constraint
-
-    # Transaction volume constraints for subsequent periods
-    for t in 2:T
-        @constraint(model, z[t, :] .>= x[t, :] .- x[t-1, :])     # Buying constraint
-        @constraint(model, z[t, :] .>= x[t-1, :] .- x[t, :])     # Selling constraint
-    end
-
-    # Transaction cost rate - applied linearly to the transaction volume
-    transaction_cost_rate = 0.002  # Can be adjusted based on market conditions
-
-    # Budget constraint for the first period
-    # Sum of weights equals target investment amount plus initial holdings
-    @constraint(model, sum(x[1, :]) == d + sum(x0))
-
-    # Budget constraints for subsequent periods
-    # Maintain constant investment amount across periods
-    for t in 2:T
-        @constraint(model, sum(x[t, :]) == sum(x[t-1, :]))
-    end
-
-    # Factor exposure constraints - link portfolio weights to factor exposures
-    for t in 1:T
-        @constraint(model, y[t, :] .== F_T * x[t, :])
-    end
-
-    # Objective function: minimize the weighted sum of:
-    # 1. Asset-specific risk (x[t]' * D * x[t])
-    # 2. Factor risk (y[t]' * Ω * y[t])
-    # 3. Negative expected return scaled by risk aversion (-1/γ * mu_matrix[:, t]' * x[t, :])
-    # 4. Transaction costs (transaction_cost_rate * sum(z[t, :]))
-    # Summed across all time periods
-    @objective(model, Min, sum(dot(x[t,:], D .* x[t, :]) + 
-                            dot(y[t,:], Ω * y[t, :]) -
-                            (1 / γ) * (dot(mu_matrix[:, t], x[t, :]) +
-                            transaction_cost_rate * sum(z[t, :]))
-                            for t in 1:T)
+    # 目标函数: 预先计算常量项以减少求解器的计算量
+    @expression(model, expected_returns[t=1:T], sum(mu_matrix[i,t] * x[t,i] for i in 1:n))
+    @expression(model, transaction_costs[t=1:T], transaction_cost_rate * sum(z[t,:]))
+    
+    @objective(model, Min, 
+        sum(-expected_returns[t] + transaction_costs[t] + γ*(dot(y[t,:], Ω*y[t,:])+dot(x[t,:], D_sqrt.*x[t,:]))  for t in 1:T)
     )
+    
+    # 求解模型
     optimize!(model)
 end
-# Allow scalar operations in CUDA environment and solve the model
-CUDA.@allowscalar begin    
-    # Solve the optimization problem
-        
-    # Extract optimal solutions
-    x_opt = value.(x)    # Optimal portfolio weights
-    y_opt = value.(y)    # Optimal factor exposures
-    
-    # Calculate expected returns for each period based on optimal weights
-    expected_returns = [dot(mu_matrix[:, t], x_opt[t, :]) for t in 1:T]
 
-    # Print results
-    println("Optimal Objective Value = ", objective_value(model))
-    println("\nFactor Covariance Matrix Ω:")
-    #display(Ω)
-    println("\nAsset Allocation Results by Period:")
+# 允许标量操作并高效提取结果
+CUDA.@allowscalar begin    
+    # 快速检查求解状态
+    status = termination_status(model)
+    if status != MOI.OPTIMAL && status != MOI.ALMOST_OPTIMAL
+        println("警告: 模型未能达到最优解, 状态: $status")
+    end
     
-    # Display allocation results for each period
+    # 高效提取解向量
+    x_opt = value.(x)
+    y_opt = value.(y)
+    z_opt = value.(z)
+    
+    # 使用矩阵运算计算预期收益(避免循环)
+    expected_returns = [dot(mu_matrix[:,t], x_opt[t,:]) for t in 1:T]
+    
+    # 打印结果
+    println("最优目标函数值 = ", objective_value(model))
+    
+    # 按时间段显示资产配置结果
+    println("\n按时间段的资产配置结果:")
     for t in 1:T
-        println("\nPeriod $t:")
-        println("Expected Return = ", expected_returns[t])
-        println("Top 10 Largest Weights and Their Indices:")
-        # Find indices of the 10 largest weights
-        top10_idx = sortperm(x_opt[t, :], rev=true)[1:10]
+        # 使用高效的向量求和
+        total_transaction = sum(z_opt[t,:])
+        
+        println("\n时间段 $t:")
+        println("预期收益 = ", expected_returns[t])
+        println("总交易量 = ", total_transaction)
+        println("交易成本 = ", transaction_cost_rate * total_transaction)
+        
+        println("前10个最大权重及其指数:")
+        # 使用高效部分排序而非完全排序
+        top10_idx = partialsortperm(vec(x_opt[t,:]), 1:10, rev=true)
         for (i, idx) in enumerate(top10_idx)
-            @printf("Rank %2d: Asset %4d, Weight = %.6f\n", i, idx, x_opt[t, idx])
+            @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, x_opt[t, idx])
         end
     end
+    
+    # 打印模型规模信息
+    println("\n模型规模统计:")
+    println("变量数量: ", num_variables(model))
+    println("约束数量: ", num_constraints(model, count_variable_in_set_constraints=true))
 end

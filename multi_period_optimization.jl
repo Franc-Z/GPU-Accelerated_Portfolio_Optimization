@@ -75,21 +75,6 @@ CUDA.@time begin
         @constraint(model, y[t,:] .== F_t * x[t,:])
     end
     
-    # 使用二阶锥约束处理资产特定风险和因子风险
-    #=
-    for t in 1:T
-        # 使用更紧凑的表达式
-        @constraint(model, [i=1:n], [x[t,i]; D_sqrt[i]*x[t,i]] in RotatedSecondOrderCone())
-        
-        # 针对每个因子添加一行约束
-        
-        # 仅使用下三角矩阵的有效元素
-        @constraint(model, [j=1:k],p[t,j] == sum(Ω_chol[j,j2] * y[t,j2] for j2 in 1:j))
-        
-        
-        @constraint(model, [j=1:k], [y[t,j]; p[t,j]] in RotatedSecondOrderCone())
-    end
-    =#
     # 目标函数: 预先计算常量项以减少求解器的计算量
     @expression(model, expected_returns[t=1:T], sum(mu_matrix[i,t] * x[t,i] for i in 1:n))
     @expression(model, transaction_costs[t=1:T], transaction_cost_rate * sum(z[t,:]))

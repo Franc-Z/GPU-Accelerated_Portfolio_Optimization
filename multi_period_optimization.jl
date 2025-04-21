@@ -46,21 +46,21 @@ CUDA.@time begin
     # 使用单一@variables块定义所有变量以减少JuMP内部开销
     @variables(model, begin
         0.1 >= x[1:T, 1:n] >= 0.0     # 添加上限约束提高求解效率
-        0.1 >= y[1:T, 1:k] >= 0.0                  # 因子暴露
+        0.1 >= y[1:T, 1:k] >= 0.0     # 因子暴露
         z[1:T, 1:n] >= 0.0            # 交易量变量      
     end)
     
     # 批量添加交易量约束(第一个时间段)
     @constraints(model, begin
-        [i=1:n], z[1,i] >= x[1,i] - x0[i]
-        [i=1:n], z[1,i] >= x0[i] - x[1,i]
+        z[1,:] .>= x[1,:] - x0[:]
+        z[1,:] .>= x0[:] - x[1,:]
     end)
     
     # 批量添加后续时间段的交易量约束
     for t in 2:T
         @constraints(model, begin
-            [i=1:n], z[t,i] >= x[t,i] - x[t-1,i]
-            [i=1:n], z[t,i] >= x[t-1,i] - x[t,i]
+            z[t,:] .>= x[t,:] - x[t-1,:]
+            z[t,:] .>= x[t-1,:] - x[t,:]
         end)
     end
     

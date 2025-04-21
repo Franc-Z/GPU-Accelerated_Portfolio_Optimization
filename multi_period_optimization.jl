@@ -76,7 +76,7 @@ CUDA.@time begin
     end
     
     # 目标函数: 预先计算常量项以减少求解器的计算量
-    @expression(model, expected_returns[t=1:T], sum(mu_matrix[i,t] * x[t,i] for i in 1:n))
+    @expression(model, expected_returns[t=1:T], dot(mu_matrix[:,t], x[t,:]))
     @expression(model, transaction_costs[t=1:T], transaction_cost_rate * sum(z[t,:]))
     
     @objective(model, Min, 

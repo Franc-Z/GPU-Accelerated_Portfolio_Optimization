@@ -4,9 +4,9 @@ import numpy as np
 np.random.seed(42)
 
 # 参数设置
-k = 50
-n = k * 100
-T = 2
+k = 50       #风格一直的数量
+n = k * 100  #投资组合优化的资产总数量
+T = 2        #周期数量（大于等于1）
 
 # 生成数据
 D_diag = np.random.rand(n) * np.sqrt(k)

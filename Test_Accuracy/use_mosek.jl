@@ -1,10 +1,10 @@
-using NPZ, LinearAlgebra, SparseArrays, Random, JuMP, MosekTools, Printf
+using NPZ, LinearAlgebra, SparseArrays, Random, JuMP, MosekTools, Printf, MathOptInterface
 
 # Load data
-D_diag = npzread("/nvtest/Test_Accuracy/D_diag.npy")
-F = npzread("/nvtest/Test_Accuracy/F.npy")
-Ω = npzread("/nvtest/Test_Accuracy/Omega.npy")
-mu_matrix = npzread("/nvtest/Test_Accuracy/mu_matrix.npy")
+D_diag = npzread("/nvtest/PO/GPU-Accelerated_Portfolio_Optimization/Test_Accuracy/D_diag.npy")
+F = npzread("/nvtest/PO/GPU-Accelerated_Portfolio_Optimization/Test_Accuracy/F.npy")
+Ω = npzread("/nvtest/PO/GPU-Accelerated_Portfolio_Optimization/Test_Accuracy/Omega.npy")
+mu_matrix = npzread("/nvtest/PO/GPU-Accelerated_Portfolio_Optimization/Test_Accuracy/mu_matrix.npy")
 
 println("\nFactor Covariance Matrix Ω (partial display):")
 for i in 1:5
@@ -76,11 +76,17 @@ end
     sum(-expected_returns[t] + transaction_costs[t] + γ*(dot(y[t,:], Ω*y[t,:])+dot(x[t,:], D_sqrt.*x[t,:]))  for t in 1:T)
 )
 
-# 求解模型
-
+# 先调用一次optimize!确保模型已经构建完成
 println("开始求解模型...")
+optimize!(model)
 
-@time optimize!(model)
+# 获取底层的Mosek优化器和任务
+my_optimizer = backend(model)
+
+# 直接使用MOI接口进行多次求解
+@time for i in 1:20        
+    MathOptInterface.optimize!(my_optimizer)
+end
 
 # 快速检查求解状态
 status = termination_status(model)

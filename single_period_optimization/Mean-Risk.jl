@@ -45,7 +45,7 @@ function CreatePortfolioModel(n_assets::Int, n_style::Int, λ_risk::Float64,
     set_optimizer_attribute(model, "static_regularization_enable", true)
     set_optimizer_attribute(model, "dynamic_regularization_enable", true)
     set_optimizer_attribute(model, "equilibrate_enable", true)
-    set_optimizer_attribute(model, "iterative_refinement_enable", true)
+    set_optimizer_attribute(model, "iterative_refinement_enable", true)    #对于second order conic情况，这个最好要打开
     set_optimizer_attribute(model, "chordal_decomposition_enable", true)
     set_optimizer_attribute(model, "equilibrate_max_iter", 1)
     # 空初始化

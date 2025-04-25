@@ -34,6 +34,7 @@ set_optimizer_attribute(model, "INTPNT_CO_TOL_REL_GAP", 1e-8)
 set_optimizer_attribute(model, "INTPNT_CO_TOL_INFEAS", 1e-10)
 set_optimizer_attribute(model, "INTPNT_CO_TOL_MU_RED", 1e-8)
 set_optimizer_attribute(model, "OPTIMIZER_MAX_TIME", 600.0)
+set_attribute(model, "MSK_IPAR_NUM_THREADS", 12)
 set_optimizer_attribute(model, "LOG", 1)
 
 # 使用单一@variables块定义所有变量以减少JuMP内部开销

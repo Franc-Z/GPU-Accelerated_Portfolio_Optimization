@@ -75,6 +75,7 @@ begin
 
     # 求解模型
     optimize!(model)
+    # 下面为调用CuClarabel底层的求解器，进行多次重复求解，从而进行准确计时。由于未直接调用JuMP.optimize!()，所以省去了问题设置的CPU耗时和H2D的耗时。
     my_solver = model.moi_backend.optimizer.model.optimizer.solver
     CUDA.@time for i in 1:20        
         Clarabel.solve!(my_solver)

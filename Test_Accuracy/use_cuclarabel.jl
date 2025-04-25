@@ -75,6 +75,10 @@ begin
 
     # 求解模型
     optimize!(model)
+    my_solver = model.moi_backend.optimizer.model.optimizer.solver
+    CUDA.@time for i in 1:20        
+        Clarabel.solve!(my_solver)
+    end
 end
 
 # 允许标量操作并高效提取结果

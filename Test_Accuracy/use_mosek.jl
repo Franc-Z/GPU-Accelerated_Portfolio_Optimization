@@ -79,10 +79,8 @@ end
 # 求解模型
 
 println("开始求解模型...")
-start_time = time()
-optimize!(model)
-solve_time = time() - start_time
-println("求解用时: $(round(solve_time, digits=2))秒")
+
+@time optimize!(model)
 
 # 快速检查求解状态
 status = termination_status(model)

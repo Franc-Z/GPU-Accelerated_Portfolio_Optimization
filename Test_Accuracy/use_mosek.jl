@@ -81,14 +81,6 @@ end
 println("开始求解模型...")
 optimize!(model)
 
-# 获取底层的Mosek优化器和任务
-my_optimizer = backend(model)
-
-# 直接使用MOI接口进行多次求解
-@time for i in 1:20        
-    MathOptInterface.optimize!(my_optimizer)
-end
-
 # 快速检查求解状态
 status = termination_status(model)
 if status != MOI.OPTIMAL && status != MOI.ALMOST_OPTIMAL

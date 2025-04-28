@@ -15,7 +15,7 @@ D_sqrt = sqrt.(D_diag)
 
 n, k = size(F)
 T = size(mu_matrix, 2)
-x0 = zeros(n)
+x0 = ones(n)./ n
 γ = 1.0
 d = 1.0
 transaction_cost_rate = 0.002
@@ -34,7 +34,7 @@ set_optimizer_attribute(model, "INTPNT_CO_TOL_REL_GAP", 1e-8)
 set_optimizer_attribute(model, "INTPNT_CO_TOL_INFEAS", 1e-10)
 set_optimizer_attribute(model, "INTPNT_CO_TOL_MU_RED", 1e-8)
 set_optimizer_attribute(model, "OPTIMIZER_MAX_TIME", 600.0)
-set_attribute(model, "MSK_IPAR_NUM_THREADS", 12)
+set_attribute(model, "MSK_IPAR_NUM_THREADS", 1)
 set_optimizer_attribute(model, "LOG", 1)
 
 # 使用单一@variables块定义所有变量以减少JuMP内部开销
@@ -92,13 +92,13 @@ end
     set_normalized_rhs.(con_2, x0)
 
     # 生成随机回报率向量
-    rng = Random.MersenneTwister(1)
-    return_ratio = (3 .+ 9. * rand(rng, n)) / 100.0
+    #rng = Random.MersenneTwister(1)
+    return_ratio = mu_matrix[:,1]
 
     # 更新每个时间段的目标函数系数
     for t in 1:T
         # 使用广播设置每个时间段的回报率
-        set_objective_coefficient.(model, x[t,:], -return_ratio.*γ)
+        set_objective_coefficient.(model, x[t,:], -return_ratio)
     end
 
     # 设置优化初始值

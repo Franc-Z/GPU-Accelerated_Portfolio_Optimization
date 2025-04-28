@@ -134,7 +134,7 @@ for t in 1:T
 
     println("前10个最大权重及其指数:")
     # 使用高效部分排序而非完全排序
-    top10_idx = partialsortperm(vec(x_opt[t,:]), 1:10, rev=true)
+    local top10_idx = partialsortperm(vec(x_opt[t,:]), 1:10, rev=true)
     for (i, idx) in enumerate(top10_idx)
         @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, x_opt[t, idx])
     end

@@ -15,7 +15,7 @@ D_sqrt = sqrt.(D_diag)
 
 n, k = size(F)
 T = size(mu_matrix, 2)
-x0 = ones(n)./n
+x0 = ones(n)./ n
 γ = 1.0
 d = 1.0
 transaction_cost_rate = 0.002
@@ -41,10 +41,8 @@ begin
     end)
 
     # 批量添加交易量约束(第一个时间段)
-    @constraints(model, begin
-        z[1,:] .>= x[1,:] - x0[:]
-        z[1,:] .>= x0[:] - x[1,:]
-    end)
+    con_1 = @constraint(model, z[1,:] .>= x[1,:] - x0[:])
+    con_2 = @constraint(model, z[1,:] .>= x0[:] - x[1,:])
 
     # 批量添加后续时间段的交易量约束
     for t in 2:T
@@ -86,7 +84,7 @@ new_b = CUDA.similar(my_solver.data.b, Float64)
 CUDA.copyto!(new_b, my_solver.data.b)
 
 rng = Random.MersenneTwister(1)
-CUDA.copyto!(new_ret_ratio[1:n], (3 .+ 9. * rand(rng, n)) / 100.0)
+CUDA.copyto!(new_ret_ratio[1:n], mu_matrix[:,1])
 begin
     #=
     target_value = -1.0/n  # 替换为您想比较的值
@@ -103,7 +101,7 @@ CUDA.@time for i in 1:1
     Clarabel.update_b!(my_solver, new_b)
     Clarabel.solve!(my_solver)
 end
-
+#println("Objective value: ", my_solver.solution.objective_value)    
 CUDA.@allowscalar begin
     x_opt = vec(my_solver.solution.x[1:n])
     top10_idx = partialsortperm(x_opt, 1:10, rev=true)

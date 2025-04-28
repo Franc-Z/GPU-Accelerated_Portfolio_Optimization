@@ -91,7 +91,8 @@ end
 
 function initial_solve!(pm::PortfolioModel)
     optimize!(pm.model)  
-    if termination_status(pm.model) != MOI.OPTIMAL
+    status = termination_status(pm.model)
+    if status != MOI.OPTIMAL && status != MOI.ALMOST_OPTIMAL
         println("Initial solve failed")
     end  
 end

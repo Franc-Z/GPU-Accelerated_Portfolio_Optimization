@@ -48,7 +48,7 @@ function CreatePortfolioModel(n_assets::Int, n_style::Int, λ_risk::MyFloat,
     set_optimizer_attribute(model, "static_regularization_enable", true)
     set_optimizer_attribute(model, "dynamic_regularization_enable", true)
     set_optimizer_attribute(model, "chordal_decomposition_enable", true)
-    set_optimizer_attribute(model, "equilibrate_max_iter", 1)
+    set_optimizer_attribute(model, "equilibrate_enable", true)
     # 空初始化
     var_vector_empty = Vector{JuMP.VariableRef}()
     con_empty = Vector{JuMP.ConstraintRef}()

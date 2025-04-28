@@ -77,14 +77,14 @@ end
 
 # 下面为调用CuClarabel底层的求解器，进行多次重复求解，从而进行准确计时。由于未直接调用JuMP.optimize!()，所以省去了问题设置的CPU耗时和H2D的耗时。
 my_solver = model.moi_backend.optimizer.model.optimizer.solver
-new_ret_ratio = CUDA.similar(my_solver.data.q, Float64)
-CUDA.copyto!(new_ret_ratio, my_solver.data.q)
+new_q = CUDA.similar(my_solver.data.q, Float64)
+CUDA.copyto!(new_q, my_solver.data.q)
 
 new_b = CUDA.similar(my_solver.data.b, Float64)
 CUDA.copyto!(new_b, my_solver.data.b)
 
 rng = Random.MersenneTwister(1)
-CUDA.copyto!(new_ret_ratio[1:n], mu_matrix[:,1])
+CUDA.copyto!(new_q[1:n], mu_matrix[:,1])
 begin
     #=
     target_value = -1.0/n  # 替换为您想比较的值
@@ -97,7 +97,7 @@ begin
     new_b[20152:25151] .= -my_solver.solution.x[1:n]
 end
 CUDA.@time for i in 1:1        
-    Clarabel.update_q!(my_solver, new_ret_ratio)
+    Clarabel.update_q!(my_solver, new_q)
     Clarabel.update_b!(my_solver, new_b)
     Clarabel.solve!(my_solver)
 end

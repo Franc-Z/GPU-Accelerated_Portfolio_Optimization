@@ -90,6 +90,10 @@ end
 
 function initial_solve!(pm::PortfolioModel)
     CUDA.@time optimize!(pm.model)  
+    status = termination_status(pm.model)
+    if status != MOI.OPTIMAL && status != MOI.ALMOST_OPTIMAL
+        println("Initial solve failed")
+    end  
 end
 
 function update_return_ratio!(pm::PortfolioModel, py_u_cpu::PyVector{MyFloat})

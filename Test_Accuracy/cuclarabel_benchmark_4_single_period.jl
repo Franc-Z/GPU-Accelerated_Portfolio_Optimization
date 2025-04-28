@@ -105,9 +105,10 @@ CUDA.@time for i in 1:1
 end
 
 CUDA.@allowscalar begin
-    top10_idx = partialsortperm(vec(my_solver.solution.x[1:n]), 1:10, rev=true)
+    x_opt = vec(my_solver.solution.x[1:n])
+    top10_idx = partialsortperm(x_opt, 1:10, rev=true)
     #println("Optimal solution x: ", top10_idx)
     for (i, idx) in enumerate(top10_idx)
-        @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, my_solver.solution.x[1:n][idx])
+        @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, x_opt[idx])
     end
 end

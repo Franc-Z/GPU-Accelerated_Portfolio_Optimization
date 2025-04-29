@@ -90,7 +90,7 @@ CUDA.@time begin
     indices = findall(x -> isapprox(x, target_value), cpu_b)
     println("Indices of elements approximately equal to $target_value: ", indices)
     =#
-    idx = 3*T*(n + k) + 2 + (T-1)
+    idx = 3*T*(n + k) + T + 1    # x0在new_b中的索引起始位置
     new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]
     new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]
     for t in 1:T

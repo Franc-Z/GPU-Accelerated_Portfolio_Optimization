@@ -27,44 +27,44 @@ begin
     set_optimizer_attribute(model, "dynamic_regularization_enable", true)
     set_optimizer_attribute(model, "chordal_decomposition_enable", true)
     set_optimizer_attribute(model, "equilibrate_enable", false)  # 增加平衡迭代次数
-    set_optimizer_attribute(model, "verbose", false)
+    set_optimizer_attribute(model, "verbose", true)
 
     # 使用单一@variables块定义所有变量以减少JuMP内部开销
     @variables(model, begin
-        0.1 >= x[1:T, 1:n] >= 0.0     # 添加上限约束提高求解效率
-        0.1 >= y[1:T, 1:k] >= 0.0     # 因子暴露
-        z[1:T, 1:n] >= 0.0            # 交易量变量      
+        0.1 >= x[1:n, 1:T] >= 0.0     # 添加上限约束提高求解效率
+        0.1 >= y[1:k, 1:T] >= 0.0     # 因子暴露
+        z[1:n, 1:T] >= 0.0            # 交易量变量      
     end)
 
     # 批量添加交易量约束(第一个时间段)
-    con_1 = @constraint(model, z[1,:] .>= x[1,:] - x0[:])
-    con_2 = @constraint(model, z[1,:] .>= x0[:] - x[1,:])
+    @constraint(model, z[:,1] .>= x[:,1] - x0[:])
+    @constraint(model, z[:,1] .>= x0[:] - x[:,1])
 
     # 批量添加后续时间段的交易量约束
     for t in 2:T
         @constraints(model, begin
-            z[t,:] .>= x[t,:] - x[t-1,:]
-            z[t,:] .>= x[t-1,:] - x[t,:]
+            z[:,t] .>= x[:,t] - x[:,t-1]
+            z[:,t] .>= x[:,t-1] - x[:,t]
         end)
     end
 
     # 批量添加预算约束
-    @constraint(model, sum(x[1,:]) == d + sum(x0))
-    @constraint(model, [t=2:T], sum(x[t,:]) == sum(x[t-1,:]))
+    @constraint(model, sum(x[:,1]) == d + sum(x0))
+    @constraint(model, [t=2:T], sum(x[:,t]) == sum(x[:,t-1]))
 
     # 使用矩阵向量乘法形式添加因子暴露约束(避免双循环)
     for t in 1:T
         # 使用列向量表达式一次性添加所有约束
         F_t = F'  # 预计算转置矩阵
-        @constraint(model, y[t,:] .== F_t * x[t,:])
+        @constraint(model, y[:,t] .== F_t * x[:,t])
     end
 
     # 目标函数: 预先计算常量项以减少求解器的计算量
-    @expression(model, expected_returns[t=1:T], dot(mu_matrix[:,t], x[t,:]))
-    @expression(model, transaction_costs[t=1:T], transaction_cost_rate * sum(z[t,:]))
+    @expression(model, expected_returns[t=1:T], dot(mu_matrix[:,t], x[:,t]))
+    @expression(model, transaction_costs[t=1:T], transaction_cost_rate * sum(z[:,t]))
 
     @objective(model, Min, 
-        sum(-expected_returns[t] + transaction_costs[t] + γ*(dot(y[t,:], Ω*y[t,:])+dot(x[t,:], D_sqrt.*x[t,:]))  for t in 1:T)
+        sum(-expected_returns[t] + transaction_costs[t] + γ*(dot(y[:,t], Ω*y[:,t])+dot(x[:,t], D_sqrt.*x[:,t]))  for t in 1:T)
     )
 
     # 求解模型
@@ -82,17 +82,18 @@ CUDA.copyto!(new_b, my_solver.data.b)
 
 CUDA.@time begin
     #=
-    target_value = -1.0/n  # 替换为您想比较的值
+    target_value = -1/n  # 替换为您想比较的值
     # 将 CUDA 稀疏矩阵转换到 CPU 后再进行查找
     cpu_b = Array(my_solver.data.b)
     indices = findall(x -> isapprox(x, target_value), cpu_b)
     println("Indices of elements approximately equal to $target_value: ", indices)
     =#
-    idx = 3*T*(n + k) + T + 1    # x0在new_b中的索引起始位置
-    new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]         #把上次优化的最后一个周期的权重作为x0
-    new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]    #把上次优化的最后一个周期的权重作为-x0
+    idx = 3*T*(n + k) + T + 1
+    
+    new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]
+    new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]
     for t in 1:T
-        CUDA.copyto!(new_q[1+(t-1)*n:t*n], -mu_matrix[:,t])            #此处更新每个周期的平均收益率向量，注意前面有负号
+        CUDA.copyto!(new_q[1+(t-1)*n:t*n], -mu_matrix[:,t])
     end
        
     Clarabel.update_q!(my_solver, new_q)

@@ -94,7 +94,7 @@ CUDA.@time begin
     new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]         #把上次优化的最后一个周期的权重作为x0
     new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]    #把上次优化的最后一个周期的权重作为-x0
     for t in 1:T
-        CUDA.copyto!(new_q[1+(t-1)*n:t*n], -mu_matrix[:,t])
+        CUDA.copyto!(new_q[1+(t-1)*n:t*n], -mu_matrix[:,t])            #此处更新每个周期的平均收益率向量，注意前面有负号
     end
        
     Clarabel.update_q!(my_solver, new_q)

@@ -87,27 +87,18 @@ end
 
 # 从第一个时间段获取最优解作为新的初始持仓量
 @time begin
-    copyto!(x0, value.(x[1,:]))
+    copyto!(x0, value.(x[end,:]))
     set_normalized_rhs.(con_1, -x0)
     set_normalized_rhs.(con_2, x0)
 
     # 生成随机回报率向量
     #rng = Random.MersenneTwister(1)
-    return_ratio = mu_matrix[:,1]
+    #return_ratio = mu_matrix[:,1]
 
     # 更新每个时间段的目标函数系数
     for t in 1:T
         # 使用广播设置每个时间段的回报率
-        set_objective_coefficient.(model, x[t,:], -return_ratio)
-    end
-
-    # 设置优化初始值
-    for t in 1:T
-        if t == 1
-            set_start_value.(x[t,:], x0)
-        else
-            set_start_value.(x[t,:], value.(x[t,:]))
-        end
+        set_objective_coefficient.(model, x[t,:], -mu_matrix[:,t])
     end
 
     println("设置目标函数系数和初始值完成")

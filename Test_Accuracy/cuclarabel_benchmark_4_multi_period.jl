@@ -10,9 +10,9 @@ D_sqrt = sqrt.(D_diag)
 
 n, k = size(F)
 T = size(mu_matrix, 2)
-x0 = ones(n)./ n
+x0 = zeros(n)
 γ = 1.0
-d = 1.0
+d = 1.0 - sum(x0)
 transaction_cost_rate = 0.002
 
 # 初始化优化模型，使用Clarabel求解器

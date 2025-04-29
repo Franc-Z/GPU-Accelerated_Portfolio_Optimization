@@ -6,11 +6,6 @@ F = npzread("/nvtest/Test_Accuracy/F.npy")
 Ω = npzread("/nvtest/Test_Accuracy/Omega.npy")
 mu_matrix = npzread("/nvtest/Test_Accuracy/mu_matrix.npy")
 
-println("\nFactor Covariance Matrix Ω (partial display):")
-for i in 1:5
-    @printf("[%2d] %s\n", i, join(Ω[i, 1:5], ", "))
-end
-
 D_sqrt = sqrt.(D_diag)
 
 n, k = size(F)
@@ -32,6 +27,7 @@ begin
     set_optimizer_attribute(model, "dynamic_regularization_enable", true)
     set_optimizer_attribute(model, "chordal_decomposition_enable", true)
     set_optimizer_attribute(model, "equilibrate_enable", false)  # 增加平衡迭代次数
+    set_optimizer_attribute(model, "verbose", false)
 
     # 使用单一@variables块定义所有变量以减少JuMP内部开销
     @variables(model, begin
@@ -77,14 +73,16 @@ end
 
 # 下面为调用CuClarabel底层的求解器，进行多次重复求解，从而进行准确计时。由于未直接调用JuMP.optimize!()，所以省去了问题设置的CPU耗时和H2D的耗时。
 my_solver = model.moi_backend.optimizer.model.optimizer.solver
+
 new_q = CUDA.similar(my_solver.data.q, Float64)
 CUDA.copyto!(new_q, my_solver.data.q)
 
 new_b = CUDA.similar(my_solver.data.b, Float64)
 CUDA.copyto!(new_b, my_solver.data.b)
 
-CUDA.copyto!(new_q[1:n], mu_matrix[:,1])
-begin
+#rng = Random.MersenneTwister(1)
+
+CUDA.@time begin
     #=
     target_value = -1.0/n  # 替换为您想比较的值
     # 将 CUDA 稀疏矩阵转换到 CPU 后再进行查找
@@ -92,20 +90,25 @@ begin
     indices = findall(x -> isapprox(x, target_value), cpu_b)
     println("Indices of elements approximately equal to $target_value: ", indices)
     =#
-    new_b[15152:20151] .= my_solver.solution.x[1:n]
-    new_b[20152:25151] .= -my_solver.solution.x[1:n]
-end
-CUDA.@time for i in 1:1        
+    idx = 3*T*(n + k) + 2 + (T-1)
+    new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]
+    new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]
+    for t in 1:T
+        CUDA.copyto!(new_q[1+(t-1)*n:t*n], -mu_matrix[:,t])
+    end
+       
     Clarabel.update_q!(my_solver, new_q)
     Clarabel.update_b!(my_solver, new_b)
     Clarabel.solve!(my_solver)
 end
 #println("Objective value: ", my_solver.solution.objective_value)    
-CUDA.@allowscalar begin
-    local x_opt = vec(my_solver.solution.x[1:n])
-    local top10_idx = partialsortperm(x_opt, 1:10, rev=true)
-    #println("Optimal solution x: ", top10_idx)
+CUDA.@allowscalar for t in 1:T
+    local x_opt, top10_idx
+    x_opt = vec(my_solver.solution.x[1+(t-1)*n:t*n])    
+    top10_idx = partialsortperm(x_opt, 1:10, rev=true)
+    println("时间段 $t:")
     for (i, idx) in enumerate(top10_idx)
         @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, x_opt[idx])
     end
+    println("")
 end

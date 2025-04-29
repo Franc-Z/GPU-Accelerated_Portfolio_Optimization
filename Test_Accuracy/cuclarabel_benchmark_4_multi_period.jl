@@ -80,8 +80,6 @@ CUDA.copyto!(new_q, my_solver.data.q)
 new_b = CUDA.similar(my_solver.data.b, Float64)
 CUDA.copyto!(new_b, my_solver.data.b)
 
-#rng = Random.MersenneTwister(1)
-
 CUDA.@time begin
     #=
     target_value = -1.0/n  # 替换为您想比较的值

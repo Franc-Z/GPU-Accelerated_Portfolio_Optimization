@@ -8,4 +8,7 @@
 ## mosek_benchmark_4_multi_period.jl
 此文件同样以JuMP进行建模，但使用mosek求解器进行求解。注意如果线程设置大于1的情况下，需要使用如：julia -t 12的启动方法。
 
+## cuclarabel_simple_multi_period.jl
+此文件未考虑交易成本的自变量，所以自变量少了一倍，速度也快了很多。
+
 我们可以通过生成相同的输入，来检验两者求解的数值精度差异和耗时差异。

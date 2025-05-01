@@ -5,7 +5,7 @@ D_diag = npzread("/nvtest/Test_Accuracy/D_diag.npy")
 F = npzread("/nvtest/Test_Accuracy/F.npy")
 Ω = npzread("/nvtest/Test_Accuracy/Omega.npy")
 mu_matrix = npzread("/nvtest/Test_Accuracy/mu_matrix.npy")
-
+F_t = F'
 D_sqrt = sqrt.(D_diag)
 
 n, k = size(F)
@@ -52,12 +52,9 @@ begin
     @constraint(model, sum(x[:,1]) == d + sum(x0))
     @constraint(model, [t=2:T], sum(x[:,t]) == sum(x[:,t-1]))
 
-    # 使用矩阵向量乘法形式添加因子暴露约束(避免双循环)
-    for t in 1:T
-        # 使用列向量表达式一次性添加所有约束
-        F_t = F'  # 预计算转置矩阵
-        @constraint(model, y[:,t] .== F_t * x[:,t])
-    end
+    # 使用列向量表达式一次性添加所有约束
+    @constraint(model, [t=1:T], y[:,t] .== F_t * x[:,t])
+    
 
     # 目标函数: 预先计算常量项以减少求解器的计算量
     @expression(model, expected_returns[t=1:T], dot(mu_matrix[:,t], x[:,t]))

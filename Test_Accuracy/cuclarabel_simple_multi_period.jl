@@ -21,7 +21,7 @@ begin
     # 调整求解器参数以平衡求解精度和速度
     set_optimizer_attribute(model, "direct_solve_method", :cudss)
     set_optimizer_attribute(model, "iterative_refinement_enable", false)
-    set_optimizer_attribute(model, "presolve_enable", true)
+    set_optimizer_attribute(model, "presolve_enable", false)
     set_optimizer_attribute(model, "static_regularization_enable", false)
     set_optimizer_attribute(model, "dynamic_regularization_enable", false)
     set_optimizer_attribute(model, "chordal_decomposition_enable", false)

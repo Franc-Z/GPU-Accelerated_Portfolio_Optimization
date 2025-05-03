@@ -19,14 +19,14 @@ transaction_cost_rate = 0.002
 begin
     model = JuMP.Model(Clarabel.Optimizer)
 
-    # 调整求解器参数以平衡求解精度和速度
+    # 调整求解器参数以平衡求解精度和速度，如需要直接通过矩阵或向量更新数据，下面（1）和（2）尽量设为false
     set_optimizer_attribute(model, "direct_solve_method", :cudss)
     set_optimizer_attribute(model, "iterative_refinement_enable", true)
-    set_optimizer_attribute(model, "presolve_enable", false)
+    set_optimizer_attribute(model, "presolve_enable", false)                 # （1）
     set_optimizer_attribute(model, "static_regularization_enable", true)
     set_optimizer_attribute(model, "dynamic_regularization_enable", true)
-    set_optimizer_attribute(model, "chordal_decomposition_enable", false)
-    set_optimizer_attribute(model, "equilibrate_enable", false)  # 增加平衡迭代次数
+    set_optimizer_attribute(model, "chordal_decomposition_enable", false)    # （2）
+    set_optimizer_attribute(model, "equilibrate_enable", true)  # 增加平衡迭代次数
     set_optimizer_attribute(model, "verbose", true)
 
     # 使用单一@variables块定义所有变量以减少JuMP内部开销

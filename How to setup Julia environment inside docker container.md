@@ -83,12 +83,13 @@ pdg> add MosekTools MathOptInterface     #如果需要在julia侧进行结果对
 ```
 
 此处操作为optional，旨在进一步提升性能：
-    将上面标识###(1)的那一行的github代码仓库下载到本地，编辑/source_code_path/src/kktsolvers/gpu/directldl_cudss.jl，
+将上面标识###(1)的那一行的github代码仓库下载到本地，编辑/source_code_path/src/kktsolvers/gpu/directldl_cudss.jl，
 ```julia
         cudssSolver = CUDSS.CudssSolver(KKT, "S", 'F')
         cudss_set(cudssSolver, "hybrid_execute_mode", true)    # 新加入此行代码
 ```
-    在正常Julia命令行模式：
+
+在正常Julia命令行模式：
 
 ```julia
 pdg> dev /local_CuClarabel_repo_path/

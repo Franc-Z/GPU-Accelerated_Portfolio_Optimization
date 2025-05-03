@@ -69,13 +69,15 @@ begin
 end
 
 # 下面为调用CuClarabel底层的求解器，进行多次重复求解，从而进行准确计时。由于未直接调用JuMP.optimize!()，所以省去了问题设置的CPU耗时和H2D的耗时。
-my_solver = model.moi_backend.optimizer.model.optimizer.solver
-
 new_q = CUDA.similar(my_solver.data.q, Float64)
-CUDA.copyto!(new_q, my_solver.data.q)
-
 new_b = CUDA.similar(my_solver.data.b, Float64)
 CUDA.copyto!(new_b, my_solver.data.b)
+CUDA.copyto!(new_q, my_solver.data.q)
+if my_solver.settings.equilibrate_enable
+    @. new_q *= my_solver.data.equilibration.dinv / my_solver.data.equilibration.c
+    @. new_b *= my_solver.data.equilibration.einv
+    #CUDA.synchronize()
+end
 
 CUDA.@time begin
     #=

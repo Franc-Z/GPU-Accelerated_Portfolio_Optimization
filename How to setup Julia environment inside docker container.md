@@ -78,7 +78,7 @@ versioninfo()
 ```julia
 add LinearAlgebra PythonCall CUDA SparseArrays JuMP Random Printf NPZ
 add https://github.com/exanauts/CUDSS.jl/tree/cudss-0.5.0
-add https://github.com/cvxgrp/CuClarabel.git
+add https://github.com/cvxgrp/CuClarabel/tree/83b292a00a927419eeb0cb00f05f38e2119efb17
 add MosekTools MathOptInterface     #如果需要在julia侧进行结果对比或性能benchmark，可以安装MosekTools,具体请见https://github.com/jump-dev/MosekTools.jl
 ```
 

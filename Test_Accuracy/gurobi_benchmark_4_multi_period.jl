@@ -7,6 +7,7 @@ ENV["GRB_LICENSE_FILE"] = "/nvtest/gurobi.lic"
 # Load data
 D_diag = npzread("/nvtest/Test_Accuracy/D_diag.npy")
 F = npzread("/nvtest/Test_Accuracy/F.npy")
+F_t = F'  # 预计算转置矩阵
 Ω = npzread("/nvtest/Test_Accuracy/Omega.npy")
 mu_matrix = npzread("/nvtest/Test_Accuracy/mu_matrix.npy")
 
@@ -66,7 +67,6 @@ end
 # 使用矩阵向量乘法形式添加因子暴露约束(避免双循环)
 for t in 1:T
     # 使用列向量表达式一次性添加所有约束
-    F_t = F'  # 预计算转置矩阵
     @constraint(model, y[:,t] .== F_t * x[:,t])
 end
 

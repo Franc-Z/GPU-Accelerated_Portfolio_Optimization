@@ -6,7 +6,7 @@
 注意：首次求解使用JuMP作为问题设置界面，但从第二次求解即为调用Clarabel的底层API实现（参数更新通过矩阵/向量赋值实现）。
 
 ## mosek_benchmark_4_multi_period.jl
-此文件同样以JuMP进行建模，但使用mosek求解器进行求解。注意如果线程设置大于1的情况下，需要使用如：julia -t 12的启动方法。
+此文件同样以JuMP进行建模，但使用mosek求解器进行求解。
 
 ## cuclarabel_simple_multi_period.jl
 此文件仅考虑单周期优化情况，把tolerance降到了1e-4，速度也快了很多。

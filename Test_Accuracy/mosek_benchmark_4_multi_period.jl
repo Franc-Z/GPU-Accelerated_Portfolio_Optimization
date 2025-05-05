@@ -33,7 +33,7 @@ set_optimizer_attribute(model, "INTPNT_CO_TOL_REL_GAP", 1e-8)
 set_optimizer_attribute(model, "INTPNT_CO_TOL_INFEAS", 1e-10)
 set_optimizer_attribute(model, "INTPNT_CO_TOL_MU_RED", 1e-8)
 set_optimizer_attribute(model, "OPTIMIZER_MAX_TIME", 600.0)
-set_attribute(model, "MSK_IPAR_NUM_THREADS", 1)
+set_attribute(model, "MSK_IPAR_NUM_THREADS", 8)
 set_optimizer_attribute(model, "LOG", 1)
 
 # 使用单一@variables块定义所有变量以减少JuMP内部开销
@@ -85,7 +85,7 @@ if status != MOI.OPTIMAL && status != MOI.ALMOST_OPTIMAL
 end
 
 # 从第一个时间段获取最优解作为新的初始持仓量
-@time begin
+for i in 1:10
     copyto!(x0, value.(x[:,end]))
     set_normalized_rhs.(con_1, -x0)
     set_normalized_rhs.(con_2, x0)
@@ -97,7 +97,7 @@ end
     end
 
     println("设置目标函数系数和初始值完成")
-    optimize!(model)
+    @time optimize!(model)
 end
 
 

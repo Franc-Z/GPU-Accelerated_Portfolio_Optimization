@@ -28,8 +28,7 @@ set_optimizer_attribute(model, "equilibrate_enable", false)
 set_optimizer_attribute(model, "verbose", true)
 set_optimizer_attribute(model, "tol_gap_abs", 1e-4)
 set_optimizer_attribute(model, "tol_gap_rel", 1e-4)
-set_optimizer_attribute(model, "reduced_tol_gap_abs", 1e-4)
-set_optimizer_attribute(model, "reduced_tol_gap_rel", 1e-4)
+set_optimizer_attribute(model, "tol_feas", 1e-4)
 
 # 定义变量
 @variables(model, begin

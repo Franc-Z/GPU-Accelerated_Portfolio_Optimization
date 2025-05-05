@@ -21,12 +21,12 @@ begin
 
     # 调整求解器参数以平衡求解精度和速度，如需要直接通过矩阵或向量更新数据，下面（1）和（2）尽量设为false
     set_optimizer_attribute(model, "direct_solve_method", :cudss)
-    set_optimizer_attribute(model, "iterative_refinement_enable", true)
+    set_optimizer_attribute(model, "iterative_refinement_enable", false)
     set_optimizer_attribute(model, "presolve_enable", false)                 # （1）
-    set_optimizer_attribute(model, "static_regularization_enable", true)
-    set_optimizer_attribute(model, "dynamic_regularization_enable", true)
+    set_optimizer_attribute(model, "static_regularization_enable", false)
+    set_optimizer_attribute(model, "dynamic_regularization_enable", false)
     set_optimizer_attribute(model, "chordal_decomposition_enable", false)    # （2）
-    set_optimizer_attribute(model, "equilibrate_enable", true)  # 增加平衡迭代次数
+    set_optimizer_attribute(model, "equilibrate_enable", false)  # 增加平衡迭代次数
     set_optimizer_attribute(model, "verbose", true)
 
     # 使用单一@variables块定义所有变量以减少JuMP内部开销
@@ -80,7 +80,7 @@ if my_solver.settings.equilibrate_enable
     #CUDA.synchronize()
 end
 
-CUDA.@time begin
+for i in 1:10
     #=
     target_value = -1/n  # 替换为您想比较的值
     # 将 CUDA 稀疏矩阵转换到 CPU 后再进行查找
@@ -98,7 +98,7 @@ CUDA.@time begin
        
     Clarabel.update_q!(my_solver, new_q)
     Clarabel.update_b!(my_solver, new_b)
-    Clarabel.solve!(my_solver)
+    CUDA.@time Clarabel.solve!(my_solver)
 end
 #println("Objective value: ", my_solver.solution.objective_value)    
 CUDA.@allowscalar for t in 1:T

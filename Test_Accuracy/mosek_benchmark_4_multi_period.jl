@@ -1,3 +1,4 @@
+ENV["MOSEKLM_LICENSE_FILE"] = "/nvtest/mosek.lic"
 using NPZ, LinearAlgebra, SparseArrays, Random, JuMP, MosekTools, Printf, MathOptInterface
 
 # Load data

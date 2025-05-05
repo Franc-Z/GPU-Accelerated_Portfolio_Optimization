@@ -2,7 +2,7 @@ using Gurobi, LinearAlgebra, SparseArrays, Random, JuMP, Printf, MathOptInterfac
 using NPZ
 
 # 设置 Gurobi license 文件路径
-ENV["GRB_LICENSE_FILE"] = "/root/gurobi/WLSgurobi.lic"
+ENV["GRB_LICENSE_FILE"] = "/nvtest/gurobi.lic"
 
 # Load data
 D_diag = npzread("/nvtest/Test_Accuracy/D_diag.npy")

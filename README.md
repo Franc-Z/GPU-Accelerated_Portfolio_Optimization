@@ -6,7 +6,7 @@
 ```bash
 docker build -t my-julia:cuda-12.8 .
 ```
-如果构建完的docker container中运行相关代码出现“Error: CUDA.jl could not find an appropriate CUDA runtime to use.”的错误的话，请在julia REPL中执行如下代码：
+如果构建完的docker container中运行相关代码时出现“Error: CUDA.jl could not find an appropriate CUDA runtime to use.”的错误的话，请在julia REPL中执行如下代码：
 ```julia
 julia> import CUDA
 julia> CUDA.set_runtime_version!(v"12.8"; local_toolkit=true)

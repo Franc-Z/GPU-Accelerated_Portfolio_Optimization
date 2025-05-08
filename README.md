@@ -31,11 +31,11 @@ julia> exit()
 1. 在命令行中执行 `julia` 命令，进入 Julia REPL 环境。
 2. 在 Julia REPL 中输入以下命令并回车执行：
 ```julia
-julia> include("multi_period_optimization.jl")
+julia> include("./multi_period_optimization.jl")
 ```
 3. 注意事项：
 - Julia 编译器采用先编译后执行的机制，首次运行时包含编译时间。
-- 为获得准确的 benchmark 计时数据，建议在不退出julia REPL情况下重复运行脚本（再次输入 `include("multi_period_optimization.jl")` 并回车）。
+- 为获得准确的 benchmark 计时数据，建议在不退出julia REPL情况下重复运行脚本（再次输入 `include("./multi_period_optimization.jl")` 并回车）。
 
 ---
 

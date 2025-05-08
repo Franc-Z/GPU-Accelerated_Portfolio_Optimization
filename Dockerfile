@@ -25,7 +25,7 @@ RUN echo "export PATH=\$PATH:/usr/local/julia-1.11.5/bin" >> ~/.bashrc && \
 
 # 安装Python依赖
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
-RUN pip3 install juliacall
+RUN pip3 install numpy cupy juliacall
 
 # 添加Julia组件库
 RUN julia -e 'using Pkg; \

@@ -2,7 +2,7 @@
 
 请先参考 `How to manually setup Julia environment inside docker container.md` 文件，构建包含 Python 及 Julia 运行环境的 Docker 容器。
 
-如果您希望自动构建docker image，可以运行 docker build -t my-image:1.0 .
+如果您希望自动构建docker image，可以运行 docker build -t my-julia:cuda-12.9 .
 
 ## 运行环境准备
 

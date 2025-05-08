@@ -31,7 +31,7 @@ RUN pip3 install numpy cupy juliacall
 RUN julia -e 'using Pkg; \
     Pkg.add(["LinearAlgebra", "PythonCall", "CUDA", "SparseArrays", "JuMP", "Random", "Printf", "NPZ", "MathOptInterface"]); \
     Pkg.add(url="https://github.com/exanauts/CUDSS.jl.git#cudss-0.5.0"); \
-    Pkg.add(url="https://github.com/cvxgrp/CuClarabel.git"); \
+    Pkg.add(url="https://github.com/Franc-Z/CuClarabel.git"); \
     Pkg.add(["MosekTools", "Gurobi"]); \
     Pkg.precompile()'
 

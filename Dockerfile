@@ -38,4 +38,4 @@ RUN julia -e 'using Pkg; \
     Pkg.precompile()'
 
 # 默认启动bash
-CMD ["/bin/bash source ~/.bashrc"]
+CMD ["/bin/bash"]

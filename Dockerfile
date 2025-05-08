@@ -20,8 +20,8 @@ RUN wget https://mirrors.tuna.tsinghua.edu.cn/julia-releases/bin/linux/x64/1.11/
     rm julia-1.11.5-linux-x86_64.tar.gz
 
 # 设置环境变量
-RUN echo "export PATH=\$PATH:/usr/local/julia-1.11.5/bin" >> ~/.bashrc && \
-    source ~/.bashrc
+RUN echo "export PATH=\$PATH:/usr/local/julia-1.11.5/bin" >> ~/.bashrc
+RUN source ~/.bashrc
 
 # 安装Python依赖
 ENV PIP_BREAK_SYSTEM_PACKAGES=1

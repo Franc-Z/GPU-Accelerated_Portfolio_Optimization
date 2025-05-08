@@ -1,5 +1,5 @@
 # 基础镜像，选择带GPU支持的镜像
-FROM nvcr.io/nvidia/cuda-dl-base:25.04-cuda12.9-runtime-ubuntu24.04
+FROM nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu22.04
 
 # 设置环境变量和避免交互式安装
 ENV DEBIAN_FRONTEND=noninteractive

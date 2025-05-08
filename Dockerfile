@@ -1,5 +1,5 @@
 # 基础镜像，选择带GPU支持的镜像
-FROM nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu22.04
+FROM nvcr.io/nvidia/base/ubuntu:jammy-20250415.1
 
 # 设置环境变量和避免交互式安装
 ENV DEBIAN_FRONTEND=noninteractive
@@ -32,10 +32,10 @@ RUN julia -e 'using Pkg; \
     Pkg.add(url="https://github.com/exanauts/CUDSS.jl.git#cudss-0.5.0"); \
     Pkg.add(url="https://github.com/Franc-Z/CuClarabel.git"); \
     import CUDA; \
-    CUDA.set_runtime_version!(local_toolkit=true); \
+    CUDA.set_runtime_version!(v"12.8"); \
     CUDA.precompile_runtime(); \
     Pkg.add(["MosekTools", "Gurobi"]); \
-    Pkg.precompile()'
+    Pkg.precompile();'
 
 # 默认启动bash
 CMD ["/bin/bash"]

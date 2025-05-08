@@ -10,6 +10,7 @@ docker build -t my-julia:cuda-12.8 .
 ```julia
 julia> import CUDA
 julia> CUDA.set_runtime_version!(v"12.8"; local_toolkit=true)
+julia> CUDA.precompile_runtime()
 julia> exit()
 ```
 之后再执行相关代码即可正常运行。

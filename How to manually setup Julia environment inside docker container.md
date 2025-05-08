@@ -15,14 +15,14 @@ docker run -it --rm --gpus 1 --user=root your_image_name /bin/bash
 下载并安装Julia：
 
 ```bash
-wget https://mirrors.tuna.tsinghua.edu.cn/julia-releases/bin/linux/x64/1.11/julia-1.11-latest-linux-x86_64.tar.gz
-tar -zxvf julia-1.11-latest-linux-x86_64.tar.gz
+wget https://mirrors.tuna.tsinghua.edu.cn/julia-releases/bin/linux/x64/1.11/julia-1.11.5-linux-x86_64.tar.gz
+tar -zxvf julia-1.11.5-linux-x86_64.tar.gz
 ```
 
 将解压后的文件夹移动到`/usr/local/`目录中（假设版本为`julia-1.11.4`）：
 
 ```bash
-mv julia-1.11.4 /usr/local/
+mv julia-1.11.5 /usr/local/
 ```
 
 #### 3. 设置环境变量
@@ -36,13 +36,13 @@ vim ~/.bashrc
 在文件末尾添加以下行（请根据实际路径调整）：
 
 ```bash
-export PATH="$PATH:/usr/local/julia-1.11.4/bin"
+export PATH="$PATH:/usr/local/julia-1.11.5/bin"
 ```
 
 或者直接执行以下命令：
 
 ```bash
-echo "export PATH=\"$PATH:/usr/local/julia-1.11.4/bin\"" >> ~/.bashrc
+echo "export PATH=\"$PATH:/usr/local/julia-1.11.5/bin\"" >> ~/.bashrc
 ```
 
 使配置生效：
@@ -70,15 +70,15 @@ versioninfo()
 进入Julia环境后，按`]`键进入包管理模式：
 
 ```
-(@v1.12) pkg>
+(@v1.11) pkg>
 ```
 
 安装所需的组件库：
 
 ```julia
 pdg> add LinearAlgebra PythonCall CUDA SparseArrays JuMP Random Printf NPZ MathOptInterface
-pdg> add https://github.com/exanauts/CUDSS.jl/tree/cudss-0.5.0
-pdg> add https://github.com/cvxgrp/CuClarabel/tree/83b292a00a927419eeb0cb00f05f38e2119efb17        ###(1) 
+pdg> add https://github.com/exanauts/CUDSS.jl.git#cudss-0.5.0
+pdg> add https://github.com/cvxgrp/CuClarabel.jl.git  
 pdg> add MosekTools Gurobi     #如果需要在julia侧进行结果对比或性能benchmark，可以安装MosekTools及Gurobi,具体请见https://github.com/jump-dev/MosekTools.jl
 ```
 
@@ -113,7 +113,7 @@ exit()
 在bash中安装`juliacall`包：
 
 ```bash
-pip install juliacall
+pip install numpy cupy juliacall
 ```
 
 #### 7. 保存容器为镜像

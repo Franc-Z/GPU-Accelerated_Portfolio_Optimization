@@ -8,7 +8,7 @@
 ## mosek_benchmark_4_multi_period.jl
 此文件同样以JuMP进行建模，但使用mosek求解器进行求解。
 
-## cuclarabel_simple_single_period.jl
+## cuclarabel_single_period_low_accuracy.jl
 此文件仅考虑单周期优化情况，把tolerance降到了1e-4，速度也快了很多。
 
 我们可以通过生成相同的输入，来检验两者求解的数值精度差异和耗时差异。

@@ -23,7 +23,7 @@ julia> exit()
 
 | 脚本名称                          | 说明                                                         |
 |----------------------------------|--------------------------------------------------------------|
-| `multi_period_optimization.jl`   | 用于跑 1 到多周期任务的 Julia 脚本                            |
+| `multi_period_optimization.jl`   | 用于跑一到多周期任务的 Julia 脚本                            |
 | `multi_period_optimization_by_mosek.py` | 对应 `multi_period_optimization.jl` 的 Python 脚本，使用 Mosek 进行测速 |
 
 此外，single_period_optimization文件夹下面是使用python调用相关Julia代码的范例，所需数据文件都在文件夹下面，您可以尝试使用Mean-Variance或Mean-Risk方法来进行相关组合优化。

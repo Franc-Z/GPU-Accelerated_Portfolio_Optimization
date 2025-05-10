@@ -61,19 +61,32 @@ optimize!(model)
 # 获取底层求解器
 my_solver = model.moi_backend.optimizer.model.optimizer.solver
 
+# 输出结果
+CUDA.@allowscalar begin
+    local x_opt = vec(my_solver.solution.x[1:n])
+    local top10_idx = partialsortperm(x_opt, 1:10, rev = true)
+    for (i, idx) in enumerate(top10_idx)
+        @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, x_opt[idx])
+    end
+    println("")
+end
+
 # 优化数据拷贝操作
 new_q = CUDA.similar(my_solver.data.q, Float64)
 new_b = CUDA.similar(my_solver.data.b, Float64)
 CUDA.copyto!(new_q, my_solver.data.q)
 CUDA.copyto!(new_b, my_solver.data.b)
 
+# 在此部分我希望给mu_matrix的原有值加上其(-3% ~ 3%)之内的随机扰动
+random_noise = 0.06 * randn(size(mu_matrix))
+mu_matrix .*= (1.03 .- random_noise)
 
 # 重复求解并计时
 CUDA.@time begin
     CUDA.copyto!(new_q[1:n], -mu_matrix)
     Clarabel.update_q!(my_solver, new_q)
     Clarabel.update_b!(my_solver, new_b)
-    Clarabel.solve!(my_solver)
+    Clarabel.solve!(my_solver, true)
 end
 
 # 输出结果

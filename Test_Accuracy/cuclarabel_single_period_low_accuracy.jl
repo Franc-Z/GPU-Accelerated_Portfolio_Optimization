@@ -29,8 +29,8 @@ set_optimizer_attribute(model, "verbose", true)
 set_optimizer_attribute(model, "tol_gap_abs", 1e-4)
 set_optimizer_attribute(model, "tol_gap_rel", 1e-4)
 set_optimizer_attribute(model, "tol_feas", 1e-4)
-#set_optimizer_attribute(model, "tol_infeas_abs", 1e-4)
-#set_optimizer_attribute(model, "tol_infeas_rel", 1e-4)
+#set_optimizer_attribute(model, "tol_infeas_abs", 5e-12)
+#set_optimizer_attribute(model, "tol_infeas_rel", 5e-5)
 set_optimizer_attribute(model, "tol_ktratio", 1e-4)
 
 # 定义变量

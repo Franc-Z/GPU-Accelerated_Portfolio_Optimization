@@ -93,7 +93,7 @@ for i in 1:10
     new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]
     new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]
     for t in 1:T
-        CUDA.copyto!(new_q[1+(t-1)*n:t*n], -mu_matrix[:,t])
+        CUDA.copyto!(CUDA.view(new_q, 1+(t-1)*n:t*n), -mu_matrix[:,t])
     end
        
     Clarabel.update_q!(my_solver, new_q)

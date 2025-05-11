@@ -74,7 +74,7 @@ new_b = CUDA.similar(my_solver.data.b, Float64)
 CUDA.copyto!(new_q, my_solver.data.q)
 CUDA.copyto!(new_b, my_solver.data.b)
 
-# 重复求解并计时
+# 以下使用cuclarabel的底层API直接进行参数更新及求解
 CUDA.@time begin
     #=
     target_value = -mu_matrix[n]  # 替换为您想比较的值
@@ -106,7 +106,7 @@ CUDA.@allowscalar begin
     println("")
 end
 
-# 从第一个时间段获取最优解作为新的初始持仓量
+# 以下使用JuMP提供的API来执行参数更新和优化操作
 CUDA.@allowscalar for i in 1:1
     #copyto!(x0, value.(x[:]))
     #set_normalized_rhs.(con_1, -x0)

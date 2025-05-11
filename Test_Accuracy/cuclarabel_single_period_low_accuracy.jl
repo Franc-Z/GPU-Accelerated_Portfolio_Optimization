@@ -79,7 +79,7 @@ CUDA.copyto!(new_b, my_solver.data.b)
 
 # 在此部分我希望给mu_matrix的原有值加上其(-3% ~ 3%)之内的随机扰动
 random_noise = 0.06 * randn(size(mu_matrix))
-mu_matrix .*= (1.03 .- random_noise)
+mu_matrix .*= (1.0 .+ random_noise)
 
 # 重复求解并计时
 CUDA.@time begin

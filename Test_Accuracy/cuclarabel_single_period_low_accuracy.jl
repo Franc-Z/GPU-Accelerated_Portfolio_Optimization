@@ -46,10 +46,10 @@ end)
 @constraint(model, z .>= x0 - x)
 
 # 定义目标函数
-@expression(model, expected_returns, dot(mu_matrix, x))
+@expression(model, expected_return, dot(mu_matrix, x))
 @expression(model, transaction_fee, 0.002*sum(z))
 @objective(model, Min, 
-    -expected_returns + γ * (dot(y, Ω * y) + dot(x, D_sqrt .* x)) + transaction_fee
+    -expected_return + γ * (dot(y, Ω * y) + dot(x, D_sqrt .* x)) + transaction_fee
 )
 
 # 求解模型

@@ -70,17 +70,21 @@ end
 
 # 下面为调用CuClarabel底层的求解器，进行多次重复求解，从而进行准确计时。由于未直接调用JuMP.optimize!()，所以省去了问题设置的CPU耗时和H2D的耗时。
 my_solver = model.moi_backend.optimizer.model.optimizer.solver
+my_solution = zeros(Float64, n*T)
+CUDA.copyto!(my_solution, my_solver.solution.x[1+(T-1)*n:T*n])
+CUDA.@allowscalar begin
+    local x_opt, top10_idx
+    x_opt = vec(my_solution)
+    top10_idx = partialsortperm(x_opt, 1:10, rev=true)
+    for (i, idx) in enumerate(top10_idx)
+        @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, x_opt[idx])
+    end
+    println("")
+end
 new_q = CUDA.similar(my_solver.data.q, Float64)
 new_b = CUDA.similar(my_solver.data.b, Float64)
-CUDA.copyto!(new_b, my_solver.data.b)
-CUDA.copyto!(new_q, my_solver.data.q)
-if my_solver.settings.equilibrate_enable
-    @. new_q *= my_solver.data.equilibration.dinv / my_solver.data.equilibration.c
-    @. new_b *= my_solver.data.equilibration.einv
-    #CUDA.synchronize()
-end
 
-for i in 1:10
+for i in 1:1
     #=
     target_value = -1/n  # 替换为您想比较的值
     # 将 CUDA 稀疏矩阵转换到 CPU 后再进行查找
@@ -88,26 +92,41 @@ for i in 1:10
     indices = findall(x -> isapprox(x, target_value), cpu_b)
     println("Indices of elements approximately equal to $target_value: ", indices)
     =#
+    CUDA.copyto!(new_b, my_solver.data.b)
+    CUDA.copyto!(new_q, my_solver.data.q)
+    # 在此部分我希望给mu_matrix的原有值加上其(-3% ~ 3%)之内的随机扰动
+    random_noise = 0.1 .* randn(size(mu_matrix))
+    mu_matrix .*= (1.0 .+ random_noise)
+    #println("随机扰动后的mu_matrix: ", mu_matrix)
+
+    if my_solver.settings.equilibrate_enable
+        @. new_q *= my_solver.data.equilibration.dinv / my_solver.data.equilibration.c
+        @. new_b *= my_solver.data.equilibration.einv
+        #CUDA.synchronize()
+    end
+
     idx = 3*T*(n + k) + T + 1
     
-    new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]
-    new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]
+    #new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]
+    CUDA.copyto!(CUDA.view(new_b, idx:idx+(n-1)), my_solver.solution.x[1+(T-1)*n:T*n])
+    #new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]
+    CUDA.copyto!(CUDA.view(new_b, idx+n:idx+(2*n-1)), -my_solver.solution.x[1+(T-1)*n:T*n])
     for t in 1:T
         CUDA.copyto!(CUDA.view(new_q, 1+(t-1)*n:t*n), -mu_matrix[:,t])
     end
        
     Clarabel.update_q!(my_solver, new_q)
     Clarabel.update_b!(my_solver, new_b)
-    CUDA.@time Clarabel.solve!(my_solver)
-end
-#println("Objective value: ", my_solver.solution.objective_value)    
-CUDA.@allowscalar for t in 1:T
-    local x_opt, top10_idx
-    x_opt = vec(my_solver.solution.x[1+(t-1)*n:t*n])    
-    top10_idx = partialsortperm(x_opt, 1:10, rev=true)
-    println("时间段 $t:")
-    for (i, idx) in enumerate(top10_idx)
-        @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, x_opt[idx])
+    CUDA.@time Clarabel.solve!(my_solver, true)
+    
+    CUDA.@allowscalar for t in 1:T
+        local x_opt, top10_idx
+        x_opt = vec(my_solver.solution.x[1+(t-1)*n:t*n])    
+        top10_idx = partialsortperm(x_opt, 1:10, rev=true)
+        println("时间段 $t:")
+        for (i, idx) in enumerate(top10_idx)
+            @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, x_opt[idx])
+        end
+        println("")
     end
-    println("")
 end

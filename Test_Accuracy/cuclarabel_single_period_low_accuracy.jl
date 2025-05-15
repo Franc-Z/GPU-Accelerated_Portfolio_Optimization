@@ -26,9 +26,9 @@ set_optimizer_attribute(model, "dynamic_regularization_enable", false)
 set_optimizer_attribute(model, "chordal_decomposition_enable", false)
 set_optimizer_attribute(model, "equilibrate_enable", false)
 set_optimizer_attribute(model, "verbose", true)
-set_optimizer_attribute(model, "tol_gap_abs", 1e-8)
-set_optimizer_attribute(model, "tol_gap_rel", 1e-8)
-set_optimizer_attribute(model, "tol_feas", 1e-8)
+set_optimizer_attribute(model, "tol_gap_abs", 1e-4)
+set_optimizer_attribute(model, "tol_gap_rel", 1e-4)
+set_optimizer_attribute(model, "tol_feas", 1e-4)
 
 # 定义变量
 @variables(model, begin
@@ -84,21 +84,32 @@ CUDA.@time begin
     println("Indices of elements approximately equal to $target_value: ", indices)
     =#
     # 在此部分我希望给mu_matrix的原有值加上其(-3% ~ 3%)之内的随机扰动
-    println(mu_matrix[1:5])
+    #println(mu_matrix[1:5])
     random_noise = 0.1 .* randn(size(mu_matrix))
     mu_matrix .*= (1.0 .+ random_noise)
-    println(mu_matrix[1:5])
+    #println(mu_matrix[1:5])
     # 将新的目标函数系数和约束右侧值传递给求解器
+    if my_solver.settings.equilibrate_enable
+        @. new_q *= my_solver.data.equilibration.dinv / my_solver.data.equilibration.c
+        @. new_b *= my_solver.data.equilibration.einv
+        #CUDA.synchronize()
+    end
+
+    idx = 3*(n + k) + 2
+    
+    new_b[idx:idx+(n-1)] .= my_solver.solution.x[1:n]
+    new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1:n]
+
     CUDA.copyto!(CUDA.view(new_q, 1:n), -mu_matrix[:])
-    println(new_q[1:5])
+    #println(new_q[1:5])
     Clarabel.update_q!(my_solver, new_q)
     Clarabel.update_b!(my_solver, new_b)
-    solution = Clarabel.solve!(my_solver, true)
+    Clarabel.solve!(my_solver, true)  # 使用true避免重复求解
 end
 
 # 输出结果
 CUDA.@allowscalar begin
-    local x_opt = vec(solution.x[1:n])
+    local x_opt = vec(my_solver.solution.x[1:n])
     local top10_idx = partialsortperm(x_opt, 1:10, rev = true)
     for (i, idx) in enumerate(top10_idx)
         @printf("排名 %2d: 资产 %4d, 权重 = %.6f\n", i, idx, x_opt[idx])

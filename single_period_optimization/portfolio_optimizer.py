@@ -1,7 +1,4 @@
-import numpy as np
-from time import time
 from os import path, environ
-from juliacall import Main as jl
 # 设置Julia环境变量
 environ['PYTHON_JULIACALL_THREADS'] = '1'
 environ['PYTHON_JULIACALL_HANDLE_SIGNALS'] = 'yes'
@@ -11,6 +8,10 @@ environ['PYTHON_JULIACALL_COMPILE'] = 'yes'  # 最小编译 (可选)
 environ['JULIA_CPU_TARGET'] = 'native'  # 为本地CPU架构优化
 #environ['JULIA_MAX_NUM_PRECOMPILE_FILES'] = '100'  # 增加预编译文件上限
 environ['JULIA_PKG_PRECOMPILE_AUTO'] = '1'  # 自动预编译
+
+import numpy as np
+from time import time
+from juliacall import Main as jl
 
 # 加载Julia脚本并获取模块
 #julia_script_path = '/nvtest/single_period_optimization/Mean-Variance.jl'  

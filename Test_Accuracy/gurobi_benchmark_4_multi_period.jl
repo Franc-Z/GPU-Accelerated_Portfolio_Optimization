@@ -16,7 +16,7 @@ for i in 1:5
     @printf("[%2d] %s\n", i, join(Ω[i, 1:5], ", "))
 end
 
-D_sqrt = sqrt.(D_diag)
+
 
 n, k = size(F)
 T = size(mu_matrix, 2)
@@ -75,7 +75,7 @@ end
 @expression(model, transaction_costs[t=1:T], transaction_cost_rate * sum(z[:,t]))
 
 @objective(model, Min, 
-    sum(-expected_returns[t] + transaction_costs[t] + γ*(dot(y[:,t], Ω*y[:,t])+dot(x[:,t], D_sqrt.*x[:,t]))  for t in 1:T)
+    sum(-expected_returns[t] + transaction_costs[t] + γ*(dot(y[:,t], Ω*y[:,t])+dot(x[:,t], D_diag.*x[:,t]))  for t in 1:T)
 )
 
 # 先调用一次optimize!确保模型已经构建完成

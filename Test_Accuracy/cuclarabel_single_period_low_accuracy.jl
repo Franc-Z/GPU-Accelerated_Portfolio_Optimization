@@ -6,7 +6,7 @@ F = npzread("/nvtest/Test_Accuracy/F.npy")
 Ω = npzread("/nvtest/Test_Accuracy/Omega.npy")
 mu_matrix = npzread("/nvtest/Test_Accuracy/mu_matrix.npy")
 F_t = F'  # 预计算转置矩阵
-D_sqrt = sqrt.(D_diag)
+
 
 n, k = size(F)
 
@@ -49,7 +49,7 @@ end)
 @expression(model, expected_return, dot(mu_matrix, x))
 @expression(model, transaction_fee, 0.002*sum(z))
 @objective(model, Min, 
-    -expected_return + γ * (dot(y, Ω * y) + dot(x, D_sqrt .* x)) + transaction_fee
+    -expected_return + γ * (dot(y, Ω * y) + dot(x, D_diag .* x)) + transaction_fee
 )
 
 # 求解模型

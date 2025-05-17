@@ -1,58 +1,51 @@
 using LinearAlgebra, JuMP, Clarabel, PythonCall
 import CUDA
 import PythonCall: pyconvert
-
 CUDA.allowscalar(true)
+
 MyFloat = Float64
+
 mutable struct PortfolioModel
     n_assets::Int
     n_style::Int
-    λ_risk::Float64
-    x0::Vector{Float64}
-    U_cov::Matrix{Float64}
-    expo_T::Matrix{Float64}
-    bias_sqrt::Vector{Float64}
-    cost::Vector{Float64}
-    ret_ratio::Vector{Float64}
-    model::JuMP.Model
-    x::Vector{JuMP.VariableRef}
-    t::Union{JuMP.VariableRef, Nothing}
-    y::Vector{JuMP.VariableRef}
-    con_1::Vector{JuMP.ConstraintRef}
-    con_2::Vector{JuMP.ConstraintRef}
+    λ_risk::MyFloat
+    x0::Vector{MyFloat}
+    y0::Vector{MyFloat}
+    cov::Matrix{MyFloat}
+    expo_T::Matrix{MyFloat}
+    bias::Vector{MyFloat}
+    cost::Vector{MyFloat}
+    return_ratio::Vector{MyFloat}
+    model::Model
+    new_q::Union{CUDA.CuArray{MyFloat}, Nothing} # New Q matrix for the solver
+    new_b::Union{CUDA.CuArray{MyFloat}, Nothing} # New b vector for the solver
 end
 
 
 # 构造函数
-function CreatePortfolioModel(n_assets::Int, n_style::Int, λ_risk::Float64, 
-                      py_x0::PyVector{Float64}, py_cov::PyMatrix{Float64}, 
-                      py_expo::PyMatrix{Float64}, py_bias::PyVector{Float64}, 
-                      py_cost::PyVector{Float64}, py_u_cpu::PyVector{Float64})
-    x0 = pyconvert(Vector{Float64}, py_x0)
-    cov = pyconvert(Matrix{Float64}, py_cov)
-    U_cov = cholesky(Hermitian(cov)).U
-   
-    expo = pyconvert(Matrix{Float64}, py_expo)
-    bias = pyconvert(Vector{Float64}, py_bias)
-    bias_sqrt = sqrt.(bias)
-    cost = pyconvert(Vector{Float64}, py_cost)
-    ret_ratio = pyconvert(Vector{Float64}, py_u_cpu)
+function CreatePortfolioModel(n_assets::Int, n_style::Int, λ_risk::MyFloat, 
+                      py_x0::PyVector{MyFloat}, py_cov::PyMatrix{MyFloat}, 
+                      py_expo::PyMatrix{MyFloat}, py_bias::PyVector{MyFloat}, 
+                      py_cost::PyVector{MyFloat}, py_u_cpu::PyVector{MyFloat})
+    x0 = pyconvert(Vector{MyFloat}, py_x0)
+    cov = pyconvert(Matrix{MyFloat}, py_cov)
+       
+    expo = pyconvert(Matrix{MyFloat}, py_expo)
+    bias = pyconvert(Vector{MyFloat}, py_bias)
+    
+    cost = pyconvert(Vector{MyFloat}, py_cost)
+    return_ratio = pyconvert(Vector{MyFloat}, py_u_cpu)
     
     model = Model(Clarabel.Optimizer)
-    set_optimizer_attribute(model, "direct_solve_method", :cudss)       # cudssmixed or cudss
+    set_optimizer_attribute(model, "direct_solve_method", :cudss)       # :cudssmixed or :cudss
     set_optimizer_attribute(model, "verbose", true)
-    set_optimizer_attribute(model, "presolve_enable", true)
+    set_optimizer_attribute(model, "iterative_refinement_enable", true)
+    set_optimizer_attribute(model, "presolve_enable", false)
     set_optimizer_attribute(model, "static_regularization_enable", true)
     set_optimizer_attribute(model, "dynamic_regularization_enable", true)
-    set_optimizer_attribute(model, "equilibrate_enable", true)
-    set_optimizer_attribute(model, "iterative_refinement_enable", true)    #对于second order conic情况，这个最好要打开
     set_optimizer_attribute(model, "chordal_decomposition_enable", true)
-    set_optimizer_attribute(model, "equilibrate_max_iter", 1)
-    # 空初始化
-    var_vector_empty = Vector{JuMP.VariableRef}()
-    con_empty = Vector{JuMP.ConstraintRef}()
-    
-    return PortfolioModel(n_assets, n_style, λ_risk, x0, U_cov, expo', bias_sqrt, cost, ret_ratio, model, var_vector_empty, nothing, var_vector_empty, con_empty, con_empty)
+    set_optimizer_attribute(model, "equilibrate_enable", true)
+    return PortfolioModel(n_assets, n_style, λ_risk, x0, zeros(MyFloat, n_style), cov, expo', bias, cost, return_ratio, model, nothing, nothing)
 end
 
 function setup_model!(pm::PortfolioModel)
@@ -61,11 +54,7 @@ function setup_model!(pm::PortfolioModel)
     @variable(pm.model, y[1:pm.n_style])
     @variable(pm.model, t)
     @variable(pm.model, x_buy_sell[1:pm.n_assets])
-    # 更新引用
-    pm.x = x
-    pm.y = y
-    pm.t = t
-    
+        
     # 模型约束
     @constraint(pm.model, y .== pm.expo_T * x)
     @constraint(pm.model, 0.1 .>= x .>= 0.0)
@@ -79,46 +68,91 @@ function setup_model!(pm::PortfolioModel)
     if pm.n_style >= 41
         @constraint(pm.model, y[41] == 1.0)
     end
-    
-    @expression(pm.model, risk1, pm.U_cov * y)
-    @expression(pm.model, risk2, pm.bias_sqrt .* x)
+    cov_U = cholesky(pm.cov).U
+    bias_sqrt = sqrt.(pm.bias)
+    @expression(pm.model, risk1, cov_U * y)
+    @expression(pm.model, risk2, bias_sqrt .* x)
     @constraint(pm.model, [t; risk1; risk2] in SecondOrderCone())
     @constraint(pm.model, x_buy_sell .>= 0.0)
-    pm.con_1 = @constraint(pm.model, x_buy_sell .>= x - pm.x0)
-    pm.con_2 = @constraint(pm.model, x_buy_sell .>= pm.x0 - x)
-    @objective(pm.model, Min, t + dot(pm.cost, x_buy_sell) - (1 / pm.λ_risk) * dot(pm.ret_ratio, x))
+    @constraint(pm.model, x_buy_sell .>= x - pm.x0)
+    @constraint(pm.model, x_buy_sell .>= pm.x0 - x)
+    @objective(pm.model, Min, t + dot(pm.cost, x_buy_sell) - (1 / pm.λ_risk) * dot(pm.return_ratio, x))
 end
 
 function initial_solve!(pm::PortfolioModel)
-    optimize!(pm.model)  
+    CUDA.@time optimize!(pm.model)  
     status = termination_status(pm.model)
     if status != MOI.OPTIMAL && status != MOI.ALMOST_OPTIMAL
         println("Initial solve failed")
     end  
+    pm.new_q = CUDA.similar(pm.model.moi_backend.optimizer.model.optimizer.solver.data.q, MyFloat)
+    pm.new_b = CUDA.similar(pm.model.moi_backend.optimizer.model.optimizer.solver.data.b, MyFloat)
 end
 
-function update_return_ratio!(pm::PortfolioModel, py_u_cpu::PyVector{Float64})
-    pm.ret_ratio = pyconvert(Vector{Float64}, py_u_cpu)    
+# --- Update Return Data for Subsequent Solves ---
+function update_return_ratio!(pm::PortfolioModel, py_u_cpu::PyVector{MyFloat})
+    # Convert new return data and update the model struct
+    pm.return_ratio = pyconvert(Vector{MyFloat}, py_u_cpu)
+    println("Expected return ratios updated.")
 end
 
+# --- Find the index range of the x variable ---
+function find_indice_in_q(pm::PortfolioModel, target_value::MyFloat)
+    # 将 CUDA 稀疏矩阵转换到 CPU 后再进行查找
+    CUDA.copyto!(pm.new_q, pm.model.moi_backend.optimizer.model.optimizer.solver.data.q)
+    if pm.my_solver.settings.equilibrate_enable
+        @. pm.new_q *= pm.model.moi_backend.optimizer.model.optimizer.solver.data.equilibration.dinv / pm.model.moi_backend.optimizer.model.optimizer.solver.data.equilibration.c
+        #@. pm.new_b *= pm.model.moi_backend.optimizer.model.optimizer.solver.data.equilibration.einv
+    end
+    cpu_q = Array(pm.new_q)
+    indices = findall(x -> isapprox(x, target_value), cpu_q)
+    println("Indices of elements approximately equal to $target_value: ", indices)
+end
+
+# --- Re-solve the Optimization Problem After Updates ---
 function resolve!(pm::PortfolioModel)
-    # 更新目标函数
-    begin
-        copyto!(pm.x0, value.(pm.x)) 
-        #set_start_value.(pm.x, pm.x0)
-        set_normalized_rhs.(pm.con_1, -pm.x0)
-        set_normalized_rhs.(pm.con_2, pm.x0)
-        coef = - (1 / pm.λ_risk) .* pm.ret_ratio
-        set_objective_coefficient.(pm.model, pm.x, coef)
+    println("Starting re-solve...")
+    # --- Update Warm-start Values and Constraints ---
+    my_solver = pm.model.moi_backend.optimizer.model.optimizer.solver
+    
+    CUDA.copyto!(pm.new_q, my_solver.data.q)
+    CUDA.copyto!(pm.new_b, my_solver.data.b)
+
+    if my_solver.settings.equilibrate_enable
+        CUDA.@. pm.new_q *= my_solver.data.equilibration.dinv / my_solver.data.equilibration.c
+        CUDA.@. pm.new_b *= my_solver.data.equilibration.einv
+        CUDA.synchronize()
+    end
+    # update the return ratio in the new_q
+    
+    CUDA.@allowscalar begin
+        # update the initial weights in the new_b
+        #=
+        idx = 3*(pm.n_assets) + 2
+        CUDA.copyto!(CUDA.view(pm.new_b, idx:idx+(n-1)), my_solver.solution.x[1:n])
+        CUDA.copyto!(CUDA.view(pm.new_b, idx+n:idx+(2*n-1)), -my_solver.solution.x[1:n])
+        =#
+        CUDA.copyto!(CUDA.view(pm.new_q, 1:pm.n_assets), -pm.return_ratio[:])
+
+        Clarabel.update_q!(my_solver, pm.new_q)
+        Clarabel.update_b!(my_solver, pm.new_b)
     end
     
-    CUDA.@time optimize!(pm.model)    
-    if termination_status(pm.model) != MOI.OPTIMAL
-        println("Initial solve failed")
-    end  
+    # --- Re-optimize the Model ---
+    solve_time = CUDA.@elapsed Clarabel.solve!(my_solver, true)
+    println("Re-solve completed in $solve_time seconds.")
+
+    status = my_solver.info.status
+    if status != Clarabel.SOLVED && status != Clarabel.ALMOST_SOLVED
+        println("Warning: Re-solve did not reach optimality. Status: ", status)
+    else
+        println("Re-solve successful. Status: ", status)
+    end
+end
+    
+# --- Get the Calculated Risk Value (Standard Deviation) ---
+function get_risk(pm::PortfolioModel)
+    return pm.model.moi_backend.optimizer.model.optimizer.solver.solution.x[pm.n_assets+2]  # Return the first element of the solution vector
 end
 
-function get_risk(pm::PortfolioModel)
-    CUDA.@allowscalar return value(pm.t)
-end
 

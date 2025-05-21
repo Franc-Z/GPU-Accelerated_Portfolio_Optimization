@@ -92,6 +92,9 @@ CUDA.@time begin
     if my_solver.settings.equilibrate_enable
         @. new_q *= my_solver.data.equilibration.dinv / my_solver.data.equilibration.c
         @. new_b *= my_solver.data.equilibration.einv
+        # 如果需要更新P矩阵，则需要设置如下两行
+        # Clarabel.lrscale_gpu!(my_solver.data.equilibration.dinv, new_P, my_solver.data.equilibration.dinv)
+        # new_P.nzval ./=my_solver.data.equilibration.c
         #CUDA.synchronize()
     end
 

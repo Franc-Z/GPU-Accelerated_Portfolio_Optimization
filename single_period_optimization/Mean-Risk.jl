@@ -1,6 +1,6 @@
-using LinearAlgebra, JuMP, Clarabel, PythonCall
+using LinearAlgebra, JuMP, Clarabel
 import CUDA
-import PythonCall: pyconvert
+import PythonCall: pyconvert, PyVector, PyMatrix
 CUDA.allowscalar(true)
 
 MyFloat = Float64

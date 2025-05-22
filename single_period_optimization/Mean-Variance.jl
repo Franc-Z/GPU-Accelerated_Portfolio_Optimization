@@ -1,4 +1,4 @@
-using LinearAlgebra, JuMP, Clarabel, PythonCall
+using LinearAlgebra, JuMP, Clarabel
 import CUDA
 import PythonCall: pyconvert
 CUDA.allowscalar(true)

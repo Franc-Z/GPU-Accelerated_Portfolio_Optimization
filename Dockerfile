@@ -34,7 +34,7 @@ RUN julia -e 'using Pkg; \
     import CUDA; \
     CUDA.set_runtime_version!(v"12.8"); \
     CUDA.precompile_runtime(); \
-    Pkg.add(["MosekTools", "Gurobi"]); \
+    Pkg.add(["MosekTools", "Mosek", "Gurobi"]); \
     Pkg.precompile();'
 
 # 默认启动bash

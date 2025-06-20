@@ -29,7 +29,7 @@ RUN pip3 install numpy pandas juliacall
 # 添加Julia组件库
 RUN julia -e 'using Pkg; \
     Pkg.add(["LinearAlgebra", "PythonCall", "CUDA", "SparseArrays", "JuMP", "Random", "Printf", "NPZ", "MathOptInterface"]); \
-    Pkg.add(url="https://github.com/exanauts/CUDSS.jl.git#cudss-0.5.0"); \
+    Pkg.add(url="https://github.com/exanauts/CUDSS.jl.git#cudss-0.6.0"); \
     Pkg.add(url="https://github.com/Franc-Z/CuClarabel.git"); \
     import CUDA; \
     CUDA.set_runtime_version!(v"12.8"); \

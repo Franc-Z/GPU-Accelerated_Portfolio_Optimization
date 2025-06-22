@@ -45,7 +45,7 @@ set_optimizer_attribute(model, "Heuristics", 0.5)         # 增加启发式搜�
 @variables(model, begin
     0.1 >= x[1:n, 1:T] >= 0.0     # 添加上限约束提高求解效率
     0.1 >= y[1:k, 1:T] >= 0.0     # 因子暴露
-    z[1:n, 1:T]            # 交易量变量      
+    z[1:n, 1:T]             # 交易量变量      
 end)
 
 # 批量添加交易量约束(第一个时间段)
@@ -62,7 +62,9 @@ end
 
 # 批量添加预算约束
 @constraint(model, sum(x[:,1]) == d + sum(x0))
-@constraint(model, [t=2:T], sum(x[:,t]) == sum(x[:,t-1]))
+if T > 1
+    @constraint(model, [t=2:T], sum(x[:,t]) == sum(x[:,t-1]))
+end
 
 # 使用矩阵向量乘法形式添加因子暴露约束(避免双循环)
 for t in 1:T
@@ -89,7 +91,7 @@ if status != MOI.OPTIMAL && status != MOI.ALMOST_OPTIMAL
 end
 
 # 从第一个时间段获取最优解作为新的初始持仓量
-for i in 1:10
+for i in 1:1
     copyto!(x0, value.(x[:,end]))
     set_normalized_rhs.(con_1, -x0)
     set_normalized_rhs.(con_2, x0)

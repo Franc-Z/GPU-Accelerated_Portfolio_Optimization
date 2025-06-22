@@ -1,10 +1,10 @@
 using NPZ, LinearAlgebra, SparseArrays, Random, Clarabel, JuMP, CUDA, Printf
 
 # Load data
-D_diag = npzread("/nvtest/Test_Accuracy_2/D_diag.npy")
-F = npzread("/nvtest/Test_Accuracy_2/F.npy")
-Ω = npzread("/nvtest/Test_Accuracy_2/Omega.npy")
-mu_matrix = npzread("/nvtest/Test_Accuracy_2/mu_matrix.npy")
+D_diag = npzread("/nvtest/Test_Accuracy/D_diag.npy")
+F = npzread("/nvtest/Test_Accuracy/F.npy")
+Ω = npzread("/nvtest/Test_Accuracy/Omega.npy")
+mu_matrix = npzread("/nvtest/Test_Accuracy/mu_matrix.npy")
 F_t = F'
 
 
@@ -20,7 +20,7 @@ begin
     model = JuMP.Model(Clarabel.Optimizer)
 
     # 调整求解器参数以平衡求解精度和速度，如需要直接通过矩阵或向量更新数据，下面（1）和（2）尽量设为false
-    #set_optimizer_attribute(model, "direct_solve_method", :cudss)
+    set_optimizer_attribute(model, "direct_solve_method", :cudss)
     set_optimizer_attribute(model, "iterative_refinement_enable", true)
     set_optimizer_attribute(model, "presolve_enable", false)                 # （1）
     set_optimizer_attribute(model, "static_regularization_enable",false)

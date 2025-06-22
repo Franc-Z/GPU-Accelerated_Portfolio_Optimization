@@ -1,16 +1,16 @@
 using NPZ, LinearAlgebra, SparseArrays, Random, Clarabel, JuMP, CUDA, Printf
 
 # Load data
-D_diag = npzread("/nvtest/Test_Accuracy/D_diag.npy")
-F = npzread("/nvtest/Test_Accuracy/F.npy")
-Ω = npzread("/nvtest/Test_Accuracy/Omega.npy")
-mu_matrix = npzread("/nvtest/Test_Accuracy/mu_matrix.npy")
+D_diag = npzread("/nvtest/Test_Accuracy_2/D_diag.npy")
+F = npzread("/nvtest/Test_Accuracy_2/F.npy")
+Ω = npzread("/nvtest/Test_Accuracy_2/Omega.npy")
+mu_matrix = npzread("/nvtest/Test_Accuracy_2/mu_matrix.npy")
 F_t = F'
 
 
 n, k = size(F)
 T = size(mu_matrix, 2)
-x0 = zeros(n)
+x0 = zeros(n) 
 γ = 1.0
 d = 1.0 - sum(x0)
 transaction_cost_rate = 0.002
@@ -20,20 +20,24 @@ begin
     model = JuMP.Model(Clarabel.Optimizer)
 
     # 调整求解器参数以平衡求解精度和速度，如需要直接通过矩阵或向量更新数据，下面（1）和（2）尽量设为false
-    set_optimizer_attribute(model, "direct_solve_method", :cudss)
-    set_optimizer_attribute(model, "iterative_refinement_enable", false)
+    #set_optimizer_attribute(model, "direct_solve_method", :cudss)
+    set_optimizer_attribute(model, "iterative_refinement_enable", true)
     set_optimizer_attribute(model, "presolve_enable", false)                 # （1）
-    set_optimizer_attribute(model, "static_regularization_enable", false)
+    set_optimizer_attribute(model, "static_regularization_enable",false)
     set_optimizer_attribute(model, "dynamic_regularization_enable", false)
     set_optimizer_attribute(model, "chordal_decomposition_enable", false)    # （2）
     set_optimizer_attribute(model, "equilibrate_enable", false)  # 增加平衡迭代次数
     set_optimizer_attribute(model, "verbose", true)
-
+    set_optimizer_attribute(model, "tol_feas", 1e-6)
+    set_optimizer_attribute(model, "tol_gap_abs", 1e-6)
+    set_optimizer_attribute(model, "tol_gap_rel", 1e-6)
+    #set_optimizer_attribute(model, "static_regularization_constant", 1e-6)
+    #set_optimizer_attribute(model, "max_step_fraction", 0.99)  # 增加最大步长
     # 使用单一@variables块定义所有变量以减少JuMP内部开销
     @variables(model, begin
         0.1 >= x[1:n, 1:T] >= 0.0     # 添加上限约束提高求解效率
         0.1 >= y[1:k, 1:T] >= 0.0     # 因子暴露
-        z[1:n, 1:T]             # 交易量变量      
+        z[1:n, 1:T]            # 交易量变量      
     end)
 
     # 批量添加交易量约束(第一个时间段)
@@ -50,7 +54,9 @@ begin
 
     # 批量添加预算约束
     @constraint(model, sum(x[:,1]) == d + sum(x0))
-    @constraint(model, [t=2:T], sum(x[:,t]) == sum(x[:,t-1]))
+    if T > 1    
+        @constraint(model, [t=2:T], sum(x[:,t]) == sum(x[:,t-1]))
+    end
 
     # 使用列向量表达式一次性添加所有约束
     @constraint(model, [t=1:T], y[:,t] .== F_t * x[:,t])
@@ -86,17 +92,17 @@ new_b = CUDA.similar(my_solver.data.b, Float64)
 
 for i in 1:1
     #=
-    target_value = -1/n  # 替换为您想比较的值
+    target_value =  1.222222222  # 替换为您想比较的值
     # 将 CUDA 稀疏矩阵转换到 CPU 后再进行查找
     cpu_b = Array(my_solver.data.b)
-    indices = findall(x -> isapprox(x, target_value), cpu_b)
+    indices = findall(x -> isapprox(x, target_value), cpu_b)[1]
     println("Indices of elements approximately equal to $target_value: ", indices)
     =#
     CUDA.copyto!(new_b, my_solver.data.b)
     CUDA.copyto!(new_q, my_solver.data.q)
     # 在此部分我希望给mu_matrix的原有值加上其(-3% ~ 3%)之内的随机扰动
-    random_noise = 0.1 .* randn(size(mu_matrix))
-    mu_matrix .*= (1.0 .+ random_noise)
+    #random_noise = 0.05 .* randn(size(mu_matrix)) .- 0.025
+    #mu_matrix .*= (1.0 .+ random_noise)
     #println("随机扰动后的mu_matrix: ", mu_matrix)
 
     if my_solver.settings.equilibrate_enable
@@ -105,12 +111,12 @@ for i in 1:1
         #CUDA.synchronize()
     end
 
-    idx = 3*T*(n + k) + T + 1
+    idx = 2*T*n + 3*T*k + 2
     
-    #new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]
-    CUDA.copyto!(CUDA.view(new_b, idx:idx+(n-1)), my_solver.solution.x[1+(T-1)*n:T*n])
-    #new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]
-    CUDA.copyto!(CUDA.view(new_b, idx+n:idx+(2*n-1)), -my_solver.solution.x[1+(T-1)*n:T*n])
+    new_b[idx:idx+(n-1)] .= my_solver.solution.x[1+(T-1)*n:T*n]
+    #CUDA.copyto!(CUDA.view(new_b, idx:idx+(n-1)), my_solver.solution.x[1+(T-1)*n:T*n])
+    new_b[idx+n:idx+(2*n-1)] .= -my_solver.solution.x[1+(T-1)*n:T*n]
+    #CUDA.copyto!(CUDA.view(new_b, idx+n:idx+(2*n-1)), -my_solver.solution.x[1+(T-1)*n:T*n])
     for t in 1:T
         CUDA.copyto!(CUDA.view(new_q, 1+(t-1)*n:t*n), -mu_matrix[:,t])
     end

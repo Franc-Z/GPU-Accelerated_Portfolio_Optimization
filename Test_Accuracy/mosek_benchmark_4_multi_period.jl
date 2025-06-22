@@ -28,25 +28,25 @@ println("\n问题规模: n=$n, k=$k, T=$T")
 model = JuMP.Model(Mosek.Optimizer)
 
 # 调整求解器参数
-set_optimizer_attribute(model, "INTPNT_CO_TOL_PFEAS", 1e-8)
-set_optimizer_attribute(model, "INTPNT_CO_TOL_DFEAS", 1e-8)
-set_optimizer_attribute(model, "INTPNT_CO_TOL_REL_GAP", 1e-8)
+set_optimizer_attribute(model, "INTPNT_CO_TOL_PFEAS", 1e-6)
+set_optimizer_attribute(model, "INTPNT_CO_TOL_DFEAS", 1e-6)
+set_optimizer_attribute(model, "INTPNT_CO_TOL_REL_GAP", 1e-6)
 set_optimizer_attribute(model, "INTPNT_CO_TOL_INFEAS", 1e-10)
-set_optimizer_attribute(model, "INTPNT_CO_TOL_MU_RED", 1e-8)
+set_optimizer_attribute(model, "INTPNT_CO_TOL_MU_RED", 1e-6)
 set_optimizer_attribute(model, "OPTIMIZER_MAX_TIME", 600.0)
 set_attribute(model, "MSK_IPAR_NUM_THREADS", 8)
 set_optimizer_attribute(model, "LOG", 1)
 
 # 使用单一@variables块定义所有变量以减少JuMP内部开销
 @variables(model, begin
-    0.1 >= x[1:n, 1:T] >= 0.0     # 添加上限约束提高求解效率
-    0.1 >= y[1:k, 1:T] >= 0.0     # 因子暴露
-    z[1:n, 1:T]             # 交易量变量      
+    0.1 >= x[1:n, 1:T] >= 0.0       # 添加上限约束提高求解效率
+    0.1 >= y[1:k, 1:T] >= 0.0       # 因子暴露
+    z[1:n, 1:T]               # 交易量变量      
 end)
 
 # 批量添加交易量约束(第一个时间段)
-@constraint(model, z[:,1] .>= x[:,1] - x0[:])
-@constraint(model, z[:,1] .>= x0[:] - x[:,1])
+@constraint(model, con_1, z[:,1] .>= x[:,1] - x0[:])
+@constraint(model, con_2, z[:,1] .>= x0[:] - x[:,1])
 
 # 批量添加后续时间段的交易量约束
 for t in 2:T
@@ -58,7 +58,9 @@ end
 
 # 批量添加预算约束
 @constraint(model, sum(x[:,1]) == d + sum(x0))
-@constraint(model, [t=2:T], sum(x[:,t]) == sum(x[:,t-1]))
+if T > 1    
+    @constraint(model, [t=2:T], sum(x[:,t]) == sum(x[:,t-1]))
+end
 
 # 使用矩阵向量乘法形式添加因子暴露约束(避免双循环)
 for t in 1:T
@@ -85,7 +87,7 @@ if status != MOI.OPTIMAL && status != MOI.ALMOST_OPTIMAL
 end
 
 # 从第一个时间段获取最优解作为新的初始持仓量
-for i in 1:10
+for i in 1:1
     copyto!(x0, value.(x[:,end]))
     set_normalized_rhs.(con_1, -x0)
     set_normalized_rhs.(con_2, x0)

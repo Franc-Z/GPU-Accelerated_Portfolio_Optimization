@@ -2,11 +2,11 @@ ENV["MOSEKLM_LICENSE_FILE"] = "/nvtest/mosek.lic"
 using NPZ, LinearAlgebra, SparseArrays, Random, JuMP, MosekTools, Printf, MathOptInterface
 
 # Load data
-D_diag = npzread("/nvtest/Test_Accuracy/D_diag.npy")
-F = npzread("/nvtest/Test_Accuracy/F.npy")
+D_diag = npzread("/nvtest/Test_Accuracy_2/D_diag.npy")
+F = npzread("/nvtest/Test_Accuracy_2/F.npy")
 F_t = F'  # 预计算转置矩阵
-Ω = npzread("/nvtest/Test_Accuracy/Omega.npy")
-mu_matrix = npzread("/nvtest/Test_Accuracy/mu_matrix.npy")
+Ω = npzread("/nvtest/Test_Accuracy_2/Omega.npy")
+mu_matrix = npzread("/nvtest/Test_Accuracy_2/mu_matrix.npy")
 
 println("\nFactor Covariance Matrix Ω (partial display):")
 for i in 1:5

@@ -76,8 +76,7 @@ versioninfo()
 安装所需的组件库：
 
 ```julia
-pdg> add LinearAlgebra PythonCall CUDA SparseArrays JuMP Random Printf NPZ MathOptInterface
-pdg> add https://github.com/exanauts/CUDSS.jl.git
+pdg> add LinearAlgebra PythonCall CUDA SparseArrays JuMP Random Printf NPZ MathOptInterface CUDSS
 pdg> add https://github.com/Franc-Z/CuClarabel.git
 pdg> add MosekTools Gurobi     #如果需要在julia侧进行结果对比或性能benchmark，可以安装MosekTools及Gurobi,具体请见https://github.com/jump-dev/MosekTools.jl
 ```

@@ -30,11 +30,12 @@ RUN pip3 install numpy pandas juliacall
 
 # 添加Julia组件库
 RUN julia -e 'using Pkg; \
-    Pkg.add(["LinearAlgebra", "PythonCall", "CUDA", "SparseArrays", "JuMP", "Random", "Printf", "NPZ", "MathOptInterface", "CuClarabel"]); \
+    Pkg.add(["LinearAlgebra", "PythonCall", "CUDA", "SparseArrays", "JuMP", "Random", "Printf", "NPZ", "MathOptInterface", "CUDSS"]); \
     import CUDA; \
     CUDA.set_runtime_version!(v"12.8"); \
     CUDA.precompile_runtime(); \
     Pkg.add(["MosekTools", "Mosek", "Gurobi"]); \
+    Pkg.develop("/CuClarabel")
     Pkg.precompile();'
 
 # 默认启动bash

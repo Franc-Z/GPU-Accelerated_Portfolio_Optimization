@@ -9,6 +9,7 @@ ENV PATH="$PATH:/usr/local/julia-1.11.5/bin"
 RUN apt-get update && apt-get install -y \
     wget \
     vim  \
+    git  \
     python3 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*

@@ -23,6 +23,7 @@ RUN wget https://mirrors.tuna.tsinghua.edu.cn/julia-releases/bin/linux/x64/1.11/
 # 设置环境变量
 RUN echo "export PATH=\$PATH:/usr/local/julia-1.11.5/bin" >> ~/.bashrc
 
+RUN git clone -b CuClarabel https://github.com/Franc-Z/CuClarabel.git
 # 安装Python依赖
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 RUN pip3 install numpy pandas juliacall

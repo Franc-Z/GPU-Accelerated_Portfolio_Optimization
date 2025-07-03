@@ -30,7 +30,7 @@ RUN pip3 install numpy pandas juliacall
 RUN julia -e 'using Pkg; \
     Pkg.add(["LinearAlgebra", "PythonCall", "CUDA", "SparseArrays", "JuMP", "Random", "Printf", "NPZ", "MathOptInterface"]); \
     Pkg.add(url="https://github.com/exanauts/CUDSS.jl.git"); \
-    Pkg.add(url="https://github.com/Franc-Z/CuClarabel.git"); \
+    Pkg.add(url="https://github.com/oxfordcontrol/Clarabel.jl/tree/CuClarabel"); \
     import CUDA; \
     CUDA.set_runtime_version!(v"12.8"); \
     CUDA.precompile_runtime(); \

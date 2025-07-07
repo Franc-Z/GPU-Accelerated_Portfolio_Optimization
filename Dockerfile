@@ -1,5 +1,5 @@
 # 基础镜像，选择带GPU支持的镜像
-FROM nvcr.io/nvidia/base/ubuntu:jammy-20250415.1
+FROM nvcr.io/nvidia/base/ubuntu:jammy-20250619
 
 # 设置环境变量和避免交互式安装
 ENV DEBIAN_FRONTEND=noninteractive

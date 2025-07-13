@@ -35,7 +35,7 @@ RUN julia -e 'using Pkg; \
     CUDA.set_runtime_version!(v"12.8"); \
     CUDA.precompile_runtime(); \
     Pkg.add(["MosekTools", "Mosek", "Gurobi"]); \
-    Pkg.dev("https://github.com/Franc-Z/CuClarabel/tree/CuClarabel"); \
+    Pkg.develop("https://github.com/Franc-Z/CuClarabel/tree/CuClarabel"); \
     Pkg.precompile();'
 
 # 默认启动bash

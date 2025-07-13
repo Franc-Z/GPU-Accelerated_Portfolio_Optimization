@@ -23,7 +23,7 @@ RUN wget https://mirrors.tuna.tsinghua.edu.cn/julia-releases/bin/linux/x64/1.11/
 # 设置环境变量
 RUN echo "export PATH=\$PATH:/usr/local/julia-1.11.5/bin" >> ~/.bashrc
 
-#RUN git clone -b CuClarabel https://github.com/Franc-Z/CuClarabel.git
+RUN git clone -b CuClarabel https://github.com/Franc-Z/CuClarabel.git
 # 安装Python依赖
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 RUN pip3 install numpy pandas juliacall
@@ -35,7 +35,7 @@ RUN julia -e 'using Pkg; \
     CUDA.set_runtime_version!(v"12.8"); \
     CUDA.precompile_runtime(); \
     Pkg.add(["MosekTools", "Mosek", "Gurobi"]); \
-    Pkg.develop(url="https://github.com/Franc-Z/CuClarabel/tree/CuClarabel"); \
+    Pkg.develop(path="/CuClarabel"); \
     Pkg.precompile();'
 
 # 默认启动bash

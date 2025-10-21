@@ -141,6 +141,8 @@ def test_4558():
     print(f'each optimizing time: {(time()-start)/i}')
     print(f"risk = {jl.get_risk(optimizer.pm)}")
     print(f'objective = {jl.JuMP.objective_value(optimizer.pm.model)}')
+    np_array = optimizer.pm.model.moi_backend.optimizer.model.optimizer.solver.solution.x[1:n_assets].to_numpy(copy=False)
+    print(f'weights = {np_array}') 
     
 if __name__ == "__main__":
     test_4558()
